@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1e1e2e;
+}
+::-webkit-scrollbar-thumb {
+  background: #45475a;
+  border-radius: 3px;
+}
+
+/* React Flow overrides */
+.react-flow__node {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+
+.react-flow__controls button {
+  background: #1e1e2e;
+  border: 1px solid #45475a;
+  color: #cdd6f4;
+}
+.react-flow__controls button:hover {
+  background: #313244;
+}
+
+.react-flow__background {
+  background: #11111b;
+}
+
+/* Cycle edge dash animation */
+@keyframes dashdraw {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
