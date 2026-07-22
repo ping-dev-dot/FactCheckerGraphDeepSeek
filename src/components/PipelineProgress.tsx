@@ -6,6 +6,9 @@ interface PipelineProgressProps {
   isPartial?: boolean;
   onRetry?: () => void;
   onViewPartial?: () => void;
+  logCount?: number;
+  showLogs?: boolean;
+  onToggleLogs?: () => void;
 }
 
 const STAGE_CONFIG: Record<string, { icon: string; label: string }> = {
@@ -22,6 +25,9 @@ export function PipelineProgress({
   isPartial,
   onRetry,
   onViewPartial,
+  logCount = 0,
+  showLogs = false,
+  onToggleLogs,
 }: PipelineProgressProps) {
   if (!progress) return null;
 
@@ -70,6 +76,21 @@ export function PipelineProgress({
         </div>
       )}
 
+      {/* Toggle detailed logs button */}
+      {onToggleLogs && (
+        <button
+          onClick={onToggleLogs}
+          className="text-xs text-[#a6adc8] hover:text-[#cdd6f4] underline flex items-center gap-1.5 cursor-pointer transition-colors"
+        >
+          <span>📋 {showLogs ? "Hide Detailed Logs" : "Show Detailed Logs"}</span>
+          {logCount > 0 && (
+            <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-[#313244] text-[#89b4fa] font-mono font-semibold">
+              {logCount}
+            </span>
+          )}
+        </button>
+      )}
+
       {/* Error with recovery */}
       {isError && (
         <div className="flex flex-col items-center gap-2 mt-2">
@@ -80,7 +101,7 @@ export function PipelineProgress({
             {onRetry && (
               <button
                 onClick={onRetry}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#89b4fa] text-[#1e1e2e] hover:bg-[#74c7ec] transition-colors"
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#89b4fa] text-[#1e1e2e] hover:bg-[#74c7ec] transition-colors cursor-pointer"
               >
                 Retry
               </button>
@@ -88,7 +109,7 @@ export function PipelineProgress({
             {isPartial && onViewPartial && (
               <button
                 onClick={onViewPartial}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#89b4fa] text-[#89b4fa] hover:bg-[#89b4fa]/10 transition-colors"
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#89b4fa] text-[#89b4fa] hover:bg-[#89b4fa]/10 transition-colors cursor-pointer"
               >
                 View Statements
               </button>
