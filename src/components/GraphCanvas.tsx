@@ -6,6 +6,7 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   type Node,
   type Edge,
   MarkerType,
@@ -143,6 +144,7 @@ export function GraphCanvas({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const { fitView } = useReactFlow();
 
   // Re-layout when result changes
   useEffect(() => {
@@ -161,8 +163,14 @@ export function GraphCanvas({
     onCanvasClick();
   }, [onCanvasClick]);
 
+  const handleResetView = useCallback(() => {
+    fitView({ padding: 0.3, duration: 300 });
+  }, [fitView]);
+
+  const hasContent = (result.statements ?? []).length > 0;
+
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -198,6 +206,21 @@ export function GraphCanvas({
           className="!bg-[#1e1e2e] !border-[#45475a] !rounded-lg"
         />
       </ReactFlow>
+
+      {/* Reset view button — visible when graph has content */}
+      {hasContent && (
+        <button
+          onClick={handleResetView}
+          title="Reset graph view"
+          className="absolute bottom-20 right-4 z-20 w-9 h-9 flex items-center justify-center 
+                     rounded-full bg-[#1e1e2e] border border-[#45475a] text-[#cdd6f4] 
+                     hover:bg-[#313244] hover:border-[#89b4fa] hover:text-[#89b4fa]
+                     transition-colors cursor-pointer shadow-lg text-lg leading-none"
+          aria-label="Reset graph view"
+        >
+          ↺
+        </button>
+      )}
     </div>
   );
 }

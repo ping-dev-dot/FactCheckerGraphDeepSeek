@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { ApiProvider, PipelineProgress } from "../types";
 import { PRESETS } from "../presets";
+import { SettingsPanel } from "./SettingsPanel";
 
 interface InputPanelProps {
   inputText: string;
@@ -16,6 +17,12 @@ interface InputPanelProps {
   onSubmit: () => void;
   isLoading: boolean;
   pipelineProgress?: PipelineProgress | null;
+  /** "desktop" shows all sections; "mobile-input" hides title + settings (shown in SettingsPanel overlay) */
+  variant?: "desktop" | "mobile-input";
+  /** Close callback — only used in mobile-input variant */
+  onClose?: () => void;
+  /** Open settings — for hint link when API key is missing */
+  onOpenSettings?: () => void;
 }
 
 export function InputPanel({
@@ -32,11 +39,14 @@ export function InputPanel({
   onSubmit,
   isLoading,
   pipelineProgress,
+  variant = "desktop",
+  onClose,
+  onOpenSettings,
 }: InputPanelProps) {
   const [elapsedSec, setElapsedSec] = useState(0);
-  const [showApiKey, setShowApiKey] = useState(false);
 
   const isComplete = pipelineProgress?.stage === "complete";
+  const isMobileInput = variant === "mobile-input";
 
 useEffect(() => {
   if (!isLoading) {
@@ -68,80 +78,40 @@ useEffect(() => {
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4 h-full overflow-y-auto">
-      <h1 className="text-xl font-bold text-[#cdd6f4]">Argument Graph Analyzer</h1>
-
-      {/* API Provider Selector */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-[#a6adc8] font-medium">
-          API Provider
-        </label>
-        <div className="grid grid-cols-2 gap-1 p-1 bg-[#1e1e2e] border border-[#45475a] rounded-lg">
-          <button
-            type="button"
-            onClick={() => onApiProviderChange("deepseek")}
-            className={`py-1.5 px-3 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-              apiProvider === "deepseek"
-                ? "bg-[#89b4fa] text-[#1e1e2e] font-semibold"
-                : "text-[#a6adc8] hover:text-[#cdd6f4]"
-            }`}
-          >
-            DeepSeek
-          </button>
-          <button
-            type="button"
-            onClick={() => onApiProviderChange("openrouter")}
-            className={`py-1.5 px-3 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-              apiProvider === "openrouter"
-                ? "bg-[#89b4fa] text-[#1e1e2e] font-semibold"
-                : "text-[#a6adc8] hover:text-[#cdd6f4]"
-            }`}
-          >
-            OpenRouter
-          </button>
+    <div className={`flex flex-col gap-4 p-4 ${isMobileInput ? "max-h-[60vh] overflow-y-auto" : "h-full overflow-y-auto"}`}>
+      {/* Drag handle pill + close button (mobile-input only) */}
+      {isMobileInput && (
+        <div className="flex items-center justify-between -mt-0.5 mb-1">
+          <div className="flex-1 flex justify-center">
+            <div className="w-10 h-1.5 rounded-full bg-[#45475a]" />
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-[#585b70] hover:text-[#cdd6f4] transition-colors text-lg leading-none ml-2 flex-shrink-0 cursor-pointer"
+              aria-label="Close input panel"
+            >
+              ✕
+            </button>
+          )}
         </div>
-      </div>
+      )}
 
-      {/* API Key */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-[#a6adc8] font-medium">
-          {apiProvider === "openrouter" ? "OpenRouter API Key" : "DeepSeek API Key"}
-        </label>
-        <div className="relative flex items-center">
-          <input
-            type={showApiKey ? "text" : "password"}
-            value={apiKey}
-            onChange={(e) => onApiKeyChange(e.target.value)}
-            placeholder={apiProvider === "openrouter" ? "sk-or-v1-..." : "sk-..."}
-            className="w-full pl-3 pr-9 py-2 bg-[#1e1e2e] border border-[#45475a] rounded-lg text-[#cdd6f4] text-sm
-                       placeholder:text-[#585b70] focus:outline-none focus:border-[#89b4fa] transition-colors font-mono text-xs"
-          />
-          <button
-            type="button"
-            onClick={() => setShowApiKey((prev) => !prev)}
-            title={showApiKey ? "Hide API key" : "Show API key"}
-            className="absolute right-2 text-[#a6adc8] hover:text-[#cdd6f4] p-1 cursor-pointer transition-colors text-xs"
-          >
-            {showApiKey ? "👁️" : "🙈"}
-          </button>
-        </div>
-      </div>
+      {/* Title — desktop only */}
+      {!isMobileInput && (
+        <h1 className="text-xl font-bold text-[#cdd6f4]">Argument Graph Analyzer</h1>
+      )}
 
-      {/* OpenRouter Model Input */}
-      {apiProvider === "openrouter" && (
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[#a6adc8] font-medium">
-            Model Name
-          </label>
-          <input
-            type="text"
-            value={model}
-            onChange={(e) => onModelChange(e.target.value)}
-            placeholder="e.g. deepseek/deepseek-chat"
-            className="w-full px-3 py-2 bg-[#1e1e2e] border border-[#45475a] rounded-lg text-[#cdd6f4] text-sm
-                       placeholder:text-[#585b70] focus:outline-none focus:border-[#89b4fa] transition-colors"
-          />
-        </div>
+      {/* Settings section — desktop only (shown via SettingsPanel in mobile overlay) */}
+      {!isMobileInput && (
+        <SettingsPanel
+          apiProvider={apiProvider}
+          onApiProviderChange={onApiProviderChange}
+          apiKey={apiKey}
+          onApiKeyChange={onApiKeyChange}
+          model={model}
+          onModelChange={onModelChange}
+        />
       )}
 
       {/* Preset selector */}
@@ -207,6 +177,23 @@ useEffect(() => {
           "Analyze Argument"
         )}
       </button>
+
+      {/* Missing API key hint — shows when text is filled but key is missing */}
+      {!isLoading && inputText.trim() && (!apiKey.trim() || (apiProvider === "openrouter" && !model.trim())) && (
+        <p className="text-xs text-[#f9e2af] text-center leading-relaxed">
+          ⚠️ API key required.{" "}
+          {onOpenSettings ? (
+            <button
+              onClick={onOpenSettings}
+              className="underline hover:text-[#f38ba8] transition-colors cursor-pointer font-medium"
+            >
+              Open Settings
+            </button>
+          ) : (
+            <span>Enter your {apiProvider === "openrouter" ? "OpenRouter" : "DeepSeek"} API key above.</span>
+          )}
+        </p>
+      )}
 
       {/* Time & Accumulated Tokens info bar */}
       {(isLoading || pipelineProgress) && (

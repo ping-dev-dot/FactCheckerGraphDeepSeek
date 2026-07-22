@@ -51,3 +51,18 @@ button:disabled, select:disabled {
     stroke-dashoffset: -24;
   }
 }
+
+/* Slide-down animation for mobile input drawer */
+@keyframes slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.animate-slide-down {
+  animation: slide-down 0.25s ease-out;
+}
