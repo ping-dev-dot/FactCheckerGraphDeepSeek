@@ -18,20 +18,27 @@ export function DebugLogConsole({ logs, onClear, onClose }: DebugLogConsoleProps
     }
   }, [logs, autoScroll]);
 
-  const handleCopy = () => {
-    const text = logs
-      .map(
-        (l) =>
-          `[${l.timestamp}] [${l.level.toUpperCase()}] ${l.message}${
-            l.details ? ` (${l.details})` : ""
-          }`
-      )
-      .join("\n");
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
+const handleCopy = async () => {
+  const text = logs
+    .map(
+      (l) =>
+        `[${l.timestamp}] [${l.level.toUpperCase()}] ${l.message}${
+          l.details ? ` (${l.details})` : ""
+        }`
+    )
+    .join("\n");
+
+  try {
+    if (!navigator.clipboard?.writeText) {
+      throw new Error("Clipboard API not available");
+    }
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  } catch {
+    setCopied(false);
+  }
+};
 
   const getLevelStyle = (level: LogEntry["level"]) => {
     switch (level) {
