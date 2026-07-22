@@ -57,6 +57,17 @@ npm run build     # runs tsc + vite build
 npm run preview   # preview the production build locally
 ```
 
+### Fact-checking (optional)
+
+Fact-checking requires a **Brave Search API key** ([get one here](https://api.search.brave.com)). Enter it in the "Brave Search API Key" field in the input panel, or for CLI testing, put it on line 2 of `.api-key`:
+
+```
+your-deepseek-api-key
+your-brave-api-key
+```
+
+> ⚠️ **CORS limitation**: Brave's API blocks browser requests. In dev mode, Vite proxies `/api/brave` → `api.search.brave.com`. In production (GitHub Pages), fact-checking won't work until a backend proxy is added.
+
 ## Architecture
 
 ```

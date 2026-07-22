@@ -144,6 +144,12 @@ export async function runFactCheck(
           const allSources = [...sourceMap.values()];
 
           if (allSources.length === 0) {
+            onProgress({
+              stage: "finalizing",
+              statementId: stmt.id,
+              totalSources: 0,
+              evaluatedSources: 0,
+            });
             onStatementUpdate(stmt.id, [], null);
             return;
           }
