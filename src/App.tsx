@@ -1,21 +1,29 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { InputPanel } from "./components/InputPanel";
 import { GraphCanvas } from "./components/GraphCanvas";
 import { DetailSidebar } from "./components/DetailSidebar";
 import { PipelineProgress } from "./components/PipelineProgress";
+import { DebugLogConsole } from "./components/DebugLogConsole";
 import { runAnalysisPipeline, PipelineStepError } from "./api";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import type {
   AnalysisResult,
+  ApiProvider,
+  ApiSettings,
   AppStatus,
+  LogEntry,
   PartialAnalysisResult,
   PipelineProgress as PipelineProgressType,
   Statement,
 } from "./types";
 
 export default function App() {
-  const [apiKey, setApiKey] = useLocalStorage<string>("deepseek-api-key", "");
+  const [apiProvider, setApiProvider] = useLocalStorage<ApiProvider>("api-provider", "deepseek");
+  const [deepseekApiKey, setDeepseekApiKey] = useLocalStorage<string>("deepseek-api-key", "");
+  const [openrouterApiKey, setOpenrouterApiKey] = useLocalStorage<string>("openrouter-api-key", "");
+  const [openrouterModel, setOpenrouterModel] = useLocalStorage<string>("openrouter-model", "deepseek/deepseek-chat");
+
   const [inputText, setInputText] = useState("");
   const [selectedPreset, setSelectedPreset] = useState("");
   const [status, setStatus] = useState<AppStatus>("idle");
@@ -26,10 +34,41 @@ export default function App() {
     useState<PipelineProgressType | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  // Cache for retry: keep text/apiKey and step 1 results across retries
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
+
+  const addLog = useCallback((entry: LogEntry) => {
+    setLogs((prev) => [...prev, entry]);
+  }, []);
+
+  const clearLogs = useCallback(() => {
+    setLogs([]);
+  }, []);
+
+  const currentApiKey = apiProvider === "openrouter" ? openrouterApiKey : deepseekApiKey;
+  const currentModel = apiProvider === "openrouter" ? openrouterModel : "deepseek-chat";
+
+  const handleApiKeyChange = (key: string) => {
+    if (apiProvider === "openrouter") {
+      setOpenrouterApiKey(key);
+    } else {
+      setDeepseekApiKey(key);
+    }
+  };
+
+  const apiSettings: ApiSettings = useMemo(
+    () => ({
+      provider: apiProvider,
+      apiKey: currentApiKey,
+      model: currentModel,
+    }),
+    [apiProvider, currentApiKey, currentModel]
+  );
+
+  // Cache for retry: keep text/apiSettings and step 1 results across retries
   const retryCache = useRef<{
     text: string;
-    apiKey: string;
+    apiSettings: ApiSettings;
     statements?: Statement[];
   } | null>(null);
 
@@ -50,12 +89,12 @@ export default function App() {
     setSelectedNodeId(null);
     setPipelineProgress({ stage: "preprocessing", message: "Starting...", statementsFound: 0, totalSteps: 3, currentStep: 0 });
 
-    retryCache.current = { text: inputText, apiKey };
+    retryCache.current = { text: inputText, apiSettings };
 
     try {
       const finalResult = await runAnalysisPipeline(
         inputText,
-        apiKey,
+        apiSettings,
         // onProgress
         (progress) => {
           setPipelineProgress(progress);
@@ -75,17 +114,13 @@ export default function App() {
         (partial) => {
           setPartialResult(partial);
           setStatus("partial");
-        }
+        },
+        // onLog
+        addLog
       );
       setResult(finalResult);
       setStatus("success");
-      setPipelineProgress({
-        stage: "complete",
-        message: `Analysis complete: ${finalResult.statements.length} statements`,
-        statementsFound: finalResult.statements.length,
-        totalSteps: 3,
-        currentStep: 3,
-      });
+      setPipelineProgress((prev) => (prev ? { ...prev, stage: "complete" } : prev));
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "An unknown error occurred";
@@ -102,12 +137,12 @@ export default function App() {
         setStatus("error");
       }
     }
-  }, [inputText, apiKey, partialResult]);
+  }, [inputText, apiSettings, partialResult, addLog]);
 
   // Retry from step 2 (cached step 1 results)
   const handleRetry = useCallback(async () => {
     const cache = retryCache.current;
-    if (!cache?.statements?.length || !cache.apiKey) return;
+    if (!cache?.statements?.length || !cache.apiSettings.apiKey) return;
 
     setStatus("running");
     setErrorMessage("");
@@ -116,7 +151,7 @@ export default function App() {
     try {
       const finalResult = await runAnalysisPipeline(
         cache.text,
-        cache.apiKey,
+        cache.apiSettings,
         (progress) => setPipelineProgress(progress),
         (statements) => {
           setPartialResult((prev) => ({ ...prev, statements }));
@@ -124,7 +159,8 @@ export default function App() {
         (partial) => {
           setPartialResult(partial);
           setStatus("partial");
-        }
+        },
+        addLog
       );
       setResult(finalResult);
       setStatus("success");
@@ -133,7 +169,7 @@ export default function App() {
       setErrorMessage(message);
       setStatus("partial");
     }
-  }, []);
+  }, [addLog]);
 
   // View partial results only (dismiss error, show statements)
   const handleViewPartial = useCallback(() => {
@@ -160,11 +196,39 @@ export default function App() {
           onInputTextChange={setInputText}
           selectedPreset={selectedPreset}
           onPresetSelect={setSelectedPreset}
-          apiKey={apiKey}
-          onApiKeyChange={setApiKey}
+          apiProvider={apiProvider}
+          onApiProviderChange={setApiProvider}
+          apiKey={currentApiKey}
+          onApiKeyChange={handleApiKeyChange}
+          model={openrouterModel}
+          onModelChange={setOpenrouterModel}
           onSubmit={handleSubmit}
           isLoading={isRunning}
+          pipelineProgress={pipelineProgress}
         />
+
+        {/* Global Debug Logs Button */}
+        <div className="px-4 pb-3 flex items-center justify-between border-t border-[#313244] pt-2">
+          <button
+            onClick={() => setShowLogs((prev) => !prev)}
+            className="text-xs text-[#a6adc8] hover:text-[#cdd6f4] transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>📋 {showLogs ? "Hide Logs" : "Show Logs"}</span>
+            {logs.length > 0 && (
+              <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-[#313244] text-[#89b4fa] font-mono font-semibold">
+                {logs.length}
+              </span>
+            )}
+          </button>
+          {logs.length > 0 && (
+            <button
+              onClick={clearLogs}
+              className="text-[11px] text-[#585b70] hover:text-[#f38ba8] transition-colors cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
+        </div>
 
         {/* Error notification */}
         {status === "error" && (
@@ -175,7 +239,7 @@ export default function App() {
             </p>
             <button
               onClick={() => setStatus("idle")}
-              className="mt-2 text-xs text-[#89b4fa] hover:underline"
+              className="mt-2 text-xs text-[#89b4fa] hover:underline cursor-pointer"
             >
               Dismiss
             </button>
@@ -215,6 +279,9 @@ export default function App() {
                       ? handleViewPartial
                       : undefined
                   }
+                  logCount={logs.length}
+                  showLogs={showLogs}
+                  onToggleLogs={() => setShowLogs((prev) => !prev)}
                 />
               ) : (
                 <div className="flex flex-col items-center gap-2">
@@ -239,6 +306,15 @@ export default function App() {
           statement={selectedStatement}
           result={displayResult}
           onClose={() => setSelectedNodeId(null)}
+        />
+      )}
+
+      {/* Floating Debug Log Console */}
+      {showLogs && (
+        <DebugLogConsole
+          logs={logs}
+          onClear={clearLogs}
+          onClose={() => setShowLogs(false)}
         />
       )}
     </div>

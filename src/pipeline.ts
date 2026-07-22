@@ -7,8 +7,11 @@
 import { z } from "zod";
 import type {
   AnalysisResult,
+  ApiSettings,
+  LogEntry,
   PartialAnalysisResult,
   PipelineProgress,
+  PipelineStage,
   Statement,
   Speaker,
 } from "./types";
@@ -26,7 +29,7 @@ import {
   STEP3_SCORING_PROMPT,
 } from "./prompts";
 
-const MODEL = "deepseek-chat";
+const DEFAULT_MODEL = "deepseek-chat";
 
 // Schema for step 1 output: array of statement objects
 const StatementArraySchema = z.array(
@@ -88,9 +91,19 @@ function emitProgress(
   message: string,
   statementsFound: number,
   currentStep: number,
-  totalSteps: number
+  totalSteps: number,
+  elapsedMs?: number,
+  totalTokens?: number
 ) {
-  onProgress({ stage, message, statementsFound, totalSteps, currentStep });
+  onProgress({
+    stage,
+    message,
+    statementsFound,
+    totalSteps,
+    currentStep,
+    elapsedMs,
+    totalTokens,
+  });
 }
 
 /**
@@ -105,23 +118,62 @@ function emitProgress(
  */
 export async function runAnalysisPipeline(
   text: string,
-  apiKey: string,
+  apiSettingsOrKey: string | ApiSettings,
   onProgress: (progress: PipelineProgress) => void,
   onStatements: (statements: Statement[]) => void,
-  onPartialResult: (result: PartialAnalysisResult) => void
+  onPartialResult: (result: PartialAnalysisResult) => void,
+  onLog?: (entry: LogEntry) => void
 ): Promise<AnalysisResult> {
+  const apiSettings: ApiSettings =
+    typeof apiSettingsOrKey === "string"
+      ? { provider: "deepseek", apiKey: apiSettingsOrKey, model: DEFAULT_MODEL }
+      : apiSettingsOrKey;
+
+  const { provider, apiKey, model } = apiSettings;
+
+  const emitLog = (level: LogEntry["level"], message: string, details?: string) => {
+    if (!onLog) return;
+    const now = new Date();
+    const timestamp =
+      now.toTimeString().split(" ")[0] + "." + String(now.getMilliseconds()).padStart(3, "0");
+    onLog({
+      id: Math.random().toString(36).substring(2, 9),
+      timestamp,
+      level,
+      message,
+      details,
+    });
+  };
+
   if (!apiKey.trim()) throw new Error("API key is required.");
   if (!text.trim()) throw new Error("Argument text is required.");
 
+  const pipelineStartTime = Date.now();
+  let totalTokensUsed = 0;
   const totalSteps = 3; // extract, relations, scoring
   let extractedStatements: Statement[] = [];
   let speakers: Speaker[] = [];
 
+  const updateProgress = (stage: PipelineStage, msg: string, step: number) => {
+    emitProgress(
+      onProgress,
+      stage,
+      msg,
+      extractedStatements.length,
+      step,
+      totalSteps,
+      Date.now() - pipelineStartTime,
+      totalTokensUsed
+    );
+  };
+
   // ── Step 0: Preprocessing ──
-  emitProgress(onProgress, "preprocessing", "Detecting speakers...", 0, 0, totalSteps);
+  updateProgress("preprocessing", "Detecting speakers...", 0);
+  emitLog("info", "Step 0: Preprocessing started", `Input length: ${text.length} chars`);
 
   const detection = detectSpeakers(text);
   speakers = detection.speakers;
+  emitLog("debug", `Detected ${speakers.length} speaker(s)`, speakers.map((s) => s.name).join(", "));
 
   // Build user message with speaker context
   let userMessage = text;
@@ -150,19 +202,26 @@ export async function runAnalysisPipeline(
   // Process chunks sequentially, merging results
   for (let ci = 0; ci < chunks.length; ci++) {
     const chunk = chunks[ci];
+    totalTokensUsed += estimateTokens(STEP1_EXTRACTION_PROMPT + chunk);
+    updateProgress("extracting", "Extracting statements...", 1);
+
     const jsonBuffer = createJsonBuffer<Statement[]>(StatementArraySchema, "array");
 
     try {
+      emitLog("info", `Step 1: Streaming chunk ${ci + 1}/${chunks.length} with ${model}`);
       const stream = streamChatCompletion({
+        provider,
         apiKey,
-        model: MODEL,
+        model,
         systemPrompt: STEP1_EXTRACTION_PROMPT,
         userMessage: chunk,
         maxTokens: 4096,
+        onLog,
       });
 
       let lastStatements: Statement[] = [];
       for await (const delta of stream) {
+        totalTokensUsed += Math.max(1, Math.ceil(delta.length / 4));
         const { parsed } = jsonBuffer.push(delta);
         if (parsed && parsed.length > lastStatements.length) {
           // Merge chunk results with main statement list
@@ -175,14 +234,7 @@ export async function runAnalysisPipeline(
           extractedStatements = [...extractedStatements, ...newStatements];
           lastStatements = parsed;
           onStatements([...extractedStatements]);
-          emitProgress(
-            onProgress,
-            "extracting",
-            `Extracting statements...`,
-            extractedStatements.length,
-            1,
-            totalSteps
-          );
+          updateProgress("extracting", "Extracting statements...", 1);
         }
       }
 
@@ -275,6 +327,9 @@ export async function runAnalysisPipeline(
       .map((s) => `[${s.id}] (${s.speakerId ?? "unknown"}): ${s.text}`)
       .join("\n");
 
+    totalTokensUsed += estimateTokens(STEP2_RELATIONS_PROMPT + stmtList);
+    updateProgress("analyzing_relations", "Analyzing logical relationships...", 2);
+
     // Stream step 2 to show live relation/fallacy/cycle counts
     const step2JsonBuffer = createJsonBuffer<z.infer<typeof Step2OutputSchema>>(
       Step2OutputSchema,
@@ -285,16 +340,20 @@ export async function runAnalysisPipeline(
     let lastFalCount = 0;
     let lastCycCount = 0;
 
+    emitLog("info", `Step 2: Streaming relations with ${model}`, `Analyzing ${extractedStatements.length} statements`);
     const step2Stream = streamChatCompletion({
+      provider,
       apiKey,
-      model: MODEL,
+      model,
       systemPrompt: STEP2_RELATIONS_PROMPT,
       userMessage: `Statements to analyze:\n\n${stmtList}`,
       maxTokens: 4096,
+      onLog,
     });
 
     let didParse = false;
     for await (const delta of step2Stream) {
+      totalTokensUsed += Math.max(1, Math.ceil(delta.length / 4));
       const { parsed } = step2JsonBuffer.push(delta);
 
       // Count partial results from the raw buffer for live feedback
@@ -311,14 +370,7 @@ export async function runAnalysisPipeline(
         if (relCount > 0) parts.push(`${relCount} relations`);
         if (falCount > 0) parts.push(`${falCount} fallacies`);
         if (cycCount > 0) parts.push(`${cycCount} cycles`);
-        emitProgress(
-          onProgress,
-          "analyzing_relations",
-          `Linking: ${parts.join(", ") || "analyzing..."}`,
-          extractedStatements.length,
-          2,
-          totalSteps
-        );
+        updateProgress("analyzing_relations", `Linking: ${parts.join(", ") || "analyzing..."}`, 2);
 
         // Try to extract partial relations/fallacies/cycles for live graph updates
         const partialRel = extractPartialRelations(raw);
@@ -362,14 +414,7 @@ export async function runAnalysisPipeline(
   }
 
   // ── Step 3: Fact-Check Scoring (batched) ──
-  emitProgress(
-    onProgress,
-    "scoring",
-    "Scoring fact-check difficulty...",
-    extractedStatements.length,
-    3,
-    totalSteps
-  );
+  updateProgress("scoring", "Scoring fact-check difficulty...", 3);
 
   // Score statements that lack difficulty scores
   const unscored = extractedStatements.filter(
@@ -381,16 +426,20 @@ export async function runAnalysisPipeline(
     const batchSize = 5;
     for (let i = 0; i < unscored.length; i += batchSize) {
       const batch = unscored.slice(i, i + batchSize);
+      totalTokensUsed += batch.reduce((sum, stmt) => sum + estimateTokens(STEP3_SCORING_PROMPT + stmt.text), 0);
       try {
         const scores = await Promise.all(
           batch.map(async (stmt) => {
             const resp = await chatCompletion({
+              provider,
               apiKey,
-              model: MODEL,
+              model,
               systemPrompt: STEP3_SCORING_PROMPT,
               userMessage: `Statement: "${stmt.text}"`,
               maxTokens: 256,
+              onLog,
             });
+            totalTokensUsed += estimateTokens(resp);
             const parsed = Step3OutputSchema.parse(extractJson(resp));
             return { id: stmt.id, ...parsed };
           })
@@ -414,14 +463,7 @@ export async function runAnalysisPipeline(
           speakers,
         };
         onPartialResult(partial);
-        emitProgress(
-          onProgress,
-          "scoring",
-          `Scoring fact-check difficulty... (${Math.min(i + batchSize, unscored.length)}/${unscored.length})`,
-          extractedStatements.length,
-          3,
-          totalSteps
-        );
+        updateProgress("scoring", `Scoring fact-check difficulty... (${Math.min(i + batchSize, unscored.length)}/${unscored.length})`, 3);
       } catch {
         // Scoring failure is non-fatal — keep default scores
       }
@@ -429,14 +471,7 @@ export async function runAnalysisPipeline(
   }
 
   // ── Build final result ──
-  emitProgress(
-    onProgress,
-    "complete",
-    `Analysis complete: ${extractedStatements.length} statements`,
-    extractedStatements.length,
-    totalSteps,
-    totalSteps
-  );
+  updateProgress("complete", `Analysis complete: ${extractedStatements.length} statements`, 3);
 
   const finalResult: AnalysisResult = {
     statements: extractedStatements,

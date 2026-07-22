@@ -100,6 +100,30 @@ export interface PipelineProgress {
   statementsFound: number;
   totalSteps: number;
   currentStep: number;
+  elapsedMs?: number;
+  totalTokens?: number;
+}
+
+// --- API Provider & Settings ---
+
+export type ApiProvider = "deepseek" | "openrouter";
+
+export interface ApiSettings {
+  provider: ApiProvider;
+  apiKey: string;
+  model: string;
+}
+
+// --- Logging ---
+
+export type LogLevel = "info" | "warn" | "error" | "debug";
+
+export interface LogEntry {
+  id: string;
+  timestamp: string;
+  level: LogLevel;
+  message: string;
+  details?: string;
 }
 
 // --- App state ---
