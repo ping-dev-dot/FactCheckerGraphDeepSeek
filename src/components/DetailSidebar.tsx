@@ -1,17 +1,17 @@
-import type { Statement, Relation, AnalysisResult } from "../types";
+import type { Statement, Relation, AnalysisResult, PartialAnalysisResult } from "../types";
 import { difficultyColor, FALLACY_COLOR } from "../types";
 
 interface DetailSidebarProps {
   statement: Statement | null;
-  result: AnalysisResult;
+  result: AnalysisResult | PartialAnalysisResult;
   onClose: () => void;
 }
 
 export function DetailSidebar({ statement, result, onClose }: DetailSidebarProps) {
   if (!statement) return null;
 
-  const incomingRels = result.relations.filter((r) => r.to === statement.id);
-  const outgoingRels = result.relations.filter((r) => r.from === statement.id);
+  const incomingRels = (result.relations ?? []).filter((r) => r.to === statement.id);
+  const outgoingRels = (result.relations ?? []).filter((r) => r.from === statement.id);
   const fallacies = (result.fallacies ?? []).filter(
     (f) => f.statementId === statement.id
   );

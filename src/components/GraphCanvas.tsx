@@ -12,7 +12,7 @@ import {
   BackgroundVariant,
 } from "@xyflow/react";
 import dagre from "dagre";
-import type { AnalysisResult } from "../types";
+import type { AnalysisResult, PartialAnalysisResult } from "../types";
 import { StatementNode } from "./StatementNode";
 import { ArgumentEdge } from "./ArgumentEdge";
 import type { StatementNodeData } from "./StatementNode";
@@ -22,15 +22,25 @@ const nodeTypes = { statementNode: StatementNode };
 const edgeTypes = { argumentEdge: ArgumentEdge };
 
 interface GraphCanvasProps {
-  result: AnalysisResult;
+  /** Full or partial result. Works with both. */
+  result: AnalysisResult | PartialAnalysisResult;
   onNodeClick: (nodeId: string) => void;
   onCanvasClick: () => void;
 }
 
-function layoutGraph(result: AnalysisResult): { nodes: Node[]; edges: Edge[] } {
+function layoutGraph(result: AnalysisResult | PartialAnalysisResult): {
+  nodes: Node[];
+  edges: Edge[];
+} {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: "TB", nodesep: 80, ranksep: 120, marginx: 60, marginy: 60 });
+  g.setGraph({
+    rankdir: "TB",
+    nodesep: 80,
+    ranksep: 120,
+    marginx: 60,
+    marginy: 60,
+  });
 
   const cycleNodeIds = new Set<string>();
   for (const cycle of result.cycles ?? []) {
@@ -44,22 +54,38 @@ function layoutGraph(result: AnalysisResult): { nodes: Node[]; edges: Edge[] } {
     fallacyNodeIds.add(f.statementId);
   }
 
+  const statements = result.statements ?? [];
+  const relations = result.relations ?? [];
+
   // Add nodes
-  for (const stmt of result.statements) {
+  for (const stmt of statements) {
     g.setNode(stmt.id, { width: 220, height: 120 });
   }
 
-  // Add edges
-  for (const rel of result.relations) {
+  // Add edges (if relations exist)
+  for (const rel of relations) {
     g.setEdge(rel.from, rel.to);
   }
 
-  dagre.layout(g);
+  // If no edges, still run layout so nodes have positions
+  if (relations.length === 0 && statements.length > 0) {
+    // dagre needs edges to produce meaningful positions;
+    // if none exist, use a simple grid layout
+    dagre.layout(g);
+  } else {
+    dagre.layout(g);
+  }
 
-  const nodes: Node[] = result.statements.map((stmt) => {
+  const nodes: Node[] = statements.map((stmt) => {
     const pos = g.node(stmt.id);
     const hasFallacy = fallacyNodeIds.has(stmt.id);
     const isInCycle = cycleNodeIds.has(stmt.id);
+
+    // Resolve speaker name and color
+    const speakers = result.speakers ?? [];
+    const speaker = speakers.find((s) => s.id === (stmt.speakerId ?? ""));
+    const speakerName = speaker?.name ?? stmt.speakerId;
+    const speakerColor = speaker?.color;
 
     return {
       id: stmt.id,
@@ -70,13 +96,16 @@ function layoutGraph(result: AnalysisResult): { nodes: Node[]; edges: Edge[] } {
       },
       data: {
         ...stmt,
+        factCheckDifficulty: stmt.factCheckDifficulty ?? 50,
         hasFallacy,
         isInCycle,
+        speakerName,
+        speakerColor,
       } satisfies StatementNodeData,
     };
   });
 
-  const edges: Edge[] = result.relations.map((rel, idx) => {
+  const edges: Edge[] = relations.map((rel, idx) => {
     const edgeIsCycle =
       cycleNodeIds.has(rel.from) && cycleNodeIds.has(rel.to);
 

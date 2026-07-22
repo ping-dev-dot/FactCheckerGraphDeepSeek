@@ -2,6 +2,24 @@ import type { Preset } from "./types";
 
 export const PRESETS: Preset[] = [
   {
+    id: "multispeaker",
+    label: "Multi-Speaker Debate",
+    description: "Two speakers debate climate policy (Alice vs Bob)",
+    text: `Alice: Climate change is the most urgent crisis facing humanity. We need to invest trillions in renewable energy immediately.
+
+Bob: I think that's completely wrong. Renewable energy is too expensive and unreliable. We should focus on nuclear power instead.
+
+Alice: But nuclear has its own risks — just look at Chernobyl and Fukushima. Solar and wind have gotten dramatically cheaper in the last decade.
+
+Bob: That's cherry-picking. The cost of solar might have dropped, but you can't power a factory or a hospital with intermittent energy. Nuclear provides reliable baseload power and it's carbon-free.
+
+Alice: So you're admitting climate change is a problem, then?
+
+Bob: I never said it wasn't a problem. I said it's not the most urgent crisis. Economic stability matters more — if we destroy our economy chasing renewables, we won't have resources to address anything else.
+
+Alice: That's a false dilemma. We can transition to renewables while maintaining economic growth. Germany and Denmark are doing it right now.`,
+  },
+  {
     id: "valid",
     label: "Valid Deductive Argument",
     description: "A clean deductive argument (modus ponens)",

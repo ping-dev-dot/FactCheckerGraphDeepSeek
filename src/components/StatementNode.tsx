@@ -5,6 +5,8 @@ import { difficultyColor, difficultyBgColor, FALLACY_COLOR } from "../types";
 export type StatementNodeData = Statement & {
   hasFallacy: boolean;
   isInCycle: boolean;
+  speakerName?: string;
+  speakerColor?: string;
 };
 
 export function StatementNode({ data, selected }: NodeProps) {
@@ -32,7 +34,21 @@ export function StatementNode({ data, selected }: NodeProps) {
       }}
     >
       <Handle type="target" position={Position.Top} className="!bg-[#585b70]" />
-      <div className="text-xs font-mono text-[#a6adc8] mb-1">{node.id}</div>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-xs font-mono text-[#a6adc8]">{node.id}</span>
+        {node.speakerName && (
+          <span
+            className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full truncate max-w-[120px]"
+            style={{
+              background: (node.speakerColor ?? "#585b70") + "22",
+              color: node.speakerColor ?? "#a6adc8",
+              border: `1px solid ${(node.speakerColor ?? "#585b70")}44`,
+            }}
+          >
+            {node.speakerName}
+          </span>
+        )}
+      </div>
       <p className="text-sm text-[#cdd6f4] leading-snug line-clamp-3">
         {node.text}
       </p>
