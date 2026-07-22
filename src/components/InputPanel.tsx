@@ -7,6 +7,8 @@ interface InputPanelProps {
   onPresetSelect: (presetId: string) => void;
   apiKey: string;
   onApiKeyChange: (key: string) => void;
+  braveApiKey: string;
+  onBraveApiKeyChange: (key: string) => void;
   onSubmit: () => void;
   isLoading: boolean;
 }
@@ -18,6 +20,8 @@ export function InputPanel({
   onPresetSelect,
   apiKey,
   onApiKeyChange,
+  braveApiKey,
+  onBraveApiKeyChange,
   onSubmit,
   isLoading,
 }: InputPanelProps) {
@@ -51,6 +55,22 @@ export function InputPanel({
         />
       </div>
 
+      {/* Brave API Key (optional) */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-[#a6adc8] font-medium">
+          Brave Search API Key{" "}
+          <span className="text-[#585b70]">(optional)</span>
+        </label>
+        <input
+          type="password"
+          value={braveApiKey}
+          onChange={(e) => onBraveApiKeyChange(e.target.value)}
+          placeholder="Add a Brave key to enable web fact-checking"
+          className="w-full px-3 py-2 bg-[#1e1e2e] border border-[#45475a] rounded-lg text-[#cdd6f4] text-sm
+                     placeholder:text-[#585b70] focus:outline-none focus:border-[#89b4fa] transition-colors"
+        />
+      </div>
+
       {/* Preset selector */}
       <div className="flex flex-col gap-1">
         <label className="text-xs text-[#a6adc8] font-medium">
@@ -77,7 +97,7 @@ export function InputPanel({
       </div>
 
       {/* Text input */}
-      <div className="flex flex-col gap-1 flex-1 min-h-0">
+      <div className="flex flex-col gap-1">
         <label className="text-xs text-[#a6adc8] font-medium">
           Argument Text
         </label>
@@ -85,9 +105,9 @@ export function InputPanel({
           value={inputText}
           onChange={(e) => onInputTextChange(e.target.value)}
           placeholder="Paste or type your argument here..."
-          className="flex-1 w-full px-3 py-2 bg-[#1e1e2e] border border-[#45475a] rounded-lg text-[#cdd6f4] text-sm
+          className="w-full px-3 py-2 bg-[#1e1e2e] border border-[#45475a] rounded-lg text-[#cdd6f4] text-sm
                      placeholder:text-[#585b70] focus:outline-none focus:border-[#89b4fa] transition-colors resize-none
-                     min-h-[120px] lg:min-h-[150px]"
+                     h-[120px] lg:h-[150px]"
         />
       </div>
 
@@ -95,7 +115,7 @@ export function InputPanel({
       <button
         onClick={onSubmit}
         disabled={isLoading || !inputText.trim() || !apiKey.trim()}
-        className="w-full py-2.5 rounded-lg font-semibold text-sm transition-all duration-200
+        className="flex-shrink-0 w-full py-2.5 rounded-lg font-semibold text-sm transition-all duration-200
                    bg-[#89b4fa] text-[#1e1e2e] hover:bg-[#74c7ec] 
                    disabled:bg-[#45475a] disabled:text-[#585b70] disabled:cursor-not-allowed
                    active:scale-[0.98]"

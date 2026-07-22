@@ -12,10 +12,14 @@ import type {
   PartialAnalysisResult,
   PipelineProgress as PipelineProgressType,
   Statement,
+  FactCheckProgress,
+  FactCheckSourceEval,
+  FactCheckVerdict,
 } from "./types";
 
 export default function App() {
   const [apiKey, setApiKey] = useLocalStorage<string>("deepseek-api-key", "");
+  const [braveApiKey, setBraveApiKey] = useLocalStorage<string>("brave-api-key", "");
   const [inputText, setInputText] = useState("");
   const [selectedPreset, setSelectedPreset] = useState("");
   const [status, setStatus] = useState<AppStatus>("idle");
@@ -25,6 +29,10 @@ export default function App() {
   const [pipelineProgress, setPipelineProgress] =
     useState<PipelineProgressType | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [factCheckProgress, setFactCheckProgress] = useState<Record<string, FactCheckProgress>>({});
+  // Separate fact-check data to avoid reference/merge issues
+  const [factCheckSources, setFactCheckSources] = useState<Record<string, FactCheckSourceEval[]>>({});
+  const [factCheckVerdicts, setFactCheckVerdicts] = useState<Record<string, FactCheckVerdict | null>>({});
 
   // Cache for retry: keep text/apiKey and step 1 results across retries
   const retryCache = useRef<{
@@ -75,6 +83,44 @@ export default function App() {
         (partial) => {
           setPartialResult(partial);
           setStatus("partial");
+        },
+        // braveApiKey
+        braveApiKey || undefined,
+        // onFactCheckProgress
+        (progress) => {
+          setFactCheckProgress((prev) => ({
+            ...prev,
+            [progress.statementId]: progress,
+          }));
+        },
+        // onStatementFactChecked
+        (statementId, sources, verdict) => {
+          // Update separate fact-check state (avoids merge issues)
+          setFactCheckSources((prev) => ({ ...prev, [statementId]: sources }));
+          setFactCheckVerdicts((prev) => ({ ...prev, [statementId]: verdict }));
+          // Also update the main result for consistency
+          setResult((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              statements: prev.statements.map((s) =>
+                s.id === statementId
+                  ? { ...s, factCheckSources: sources, factCheckResult: verdict ?? undefined }
+                  : s
+              ),
+            };
+          });
+          setPartialResult((prev) => {
+            if (!prev?.statements) return prev;
+            return {
+              ...prev,
+              statements: prev.statements.map((s) =>
+                s.id === statementId
+                  ? { ...s, factCheckSources: sources, factCheckResult: verdict ?? undefined }
+                  : s
+              ),
+            };
+          });
         }
       );
       setResult(finalResult);
@@ -124,6 +170,27 @@ export default function App() {
         (partial) => {
           setPartialResult(partial);
           setStatus("partial");
+        },
+        braveApiKey || undefined,
+        (progress) => {
+          setFactCheckProgress((prev) => ({ ...prev, [progress.statementId]: progress }));
+        },
+        (statementId, sources, verdict) => {
+          const updateStmt = (s: Statement) => {
+            if (s.id === statementId) {
+              (s as any).factCheckSources = sources;
+              (s as any).factCheckResult = verdict ?? undefined;
+            }
+            return s;
+          };
+          setResult((prev) => {
+            if (!prev) return prev;
+            return { ...prev, statements: prev.statements.map(updateStmt) };
+          });
+          setPartialResult((prev) => {
+            if (!prev?.statements) return prev;
+            return { ...prev, statements: prev.statements.map(updateStmt) };
+          });
         }
       );
       setResult(finalResult);
@@ -162,6 +229,8 @@ export default function App() {
           onPresetSelect={setSelectedPreset}
           apiKey={apiKey}
           onApiKeyChange={setApiKey}
+          braveApiKey={braveApiKey}
+          onBraveApiKeyChange={setBraveApiKey}
           onSubmit={handleSubmit}
           isLoading={isRunning}
         />
@@ -189,6 +258,7 @@ export default function App() {
           <ReactFlowProvider>
             <GraphCanvas
               result={displayResult}
+              factCheckVerdicts={factCheckVerdicts}
               onNodeClick={handleNodeClick}
               onCanvasClick={handleCanvasClick}
             />
@@ -236,9 +306,14 @@ export default function App() {
       {/* Right — detail sidebar (overlay on mobile, fixed on desktop) */}
       {selectedStatement && displayResult && (
         <DetailSidebar
+          key={selectedNodeId}
           statement={selectedStatement}
           result={displayResult}
           onClose={() => setSelectedNodeId(null)}
+          factCheckProgress={selectedNodeId ? factCheckProgress[selectedNodeId] ?? null : null}
+          factCheckSources={selectedNodeId ? factCheckSources[selectedNodeId] ?? [] : []}
+          factCheckVerdict={selectedNodeId ? factCheckVerdicts[selectedNodeId] ?? null : null}
+          braveKeyPresent={!!braveApiKey.trim()}
         />
       )}
     </div>

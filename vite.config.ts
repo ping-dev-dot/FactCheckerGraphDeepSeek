@@ -6,4 +6,13 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: '/FactCheckerGraphDeepSeek/',
+  server: {
+    proxy: {
+      '/api/brave': {
+        target: 'https://api.search.brave.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/brave/, ''),
+      },
+    },
+  },
 })

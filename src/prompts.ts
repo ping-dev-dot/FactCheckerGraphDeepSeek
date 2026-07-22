@@ -142,3 +142,49 @@ export const STEP3_SCORING_PROMPT = `You are an expert at estimating how difficu
 
 Return ONLY valid JSON (no markdown fences, no extra text):
 { "factCheckDifficulty": 45, "factCheckExplanation": "..." }`;
+
+/**
+ * Step 4a: Generate prove + disprove search queries for fact-checking.
+ * Batched: call once for ALL statements, returns a JSON object mapping statement IDs to query pairs.
+ */
+export const STEP4_SEARCH_TERMS_PROMPT = `You are an expert at formulating search queries for fact-checking. Given a list of statements, for each statement generate two search queries:
+1. A query to find evidence SUPPORTING/PROVING the statement
+2. A query to find evidence REFUTING/DISPROVING the statement
+
+Each query must be <= 400 characters and <= 50 words. Be specific — include names, dates, and key terms.
+
+Return ONLY valid JSON (no markdown fences, no extra text) in this format:
+{
+  "S1": { "prove_query": "...", "disprove_query": "..." },
+  "S2": { "prove_query": "...", "disprove_query": "..." }
+}`;
+
+/**
+ * Step 4c: Evaluate a single web source against a statement being fact-checked.
+ */
+export const STEP4_SOURCE_EVAL_PROMPT = `You are an expert fact-checker. Given:
+1. The original argument text for context
+2. A specific statement being fact-checked
+3. A web source with title, URL, and extracted content snippets
+
+Determine whether this source:
+- PROVES the statement (provides clear, credible evidence supporting it)
+- DISPROVES the statement (provides clear, credible evidence contradicting it)
+- NEITHER (unrelated, neutral, insufficient evidence, or only tangentially relevant)
+
+Include a short explanation (1-2 sentences) of your reasoning.
+
+Return ONLY valid JSON (no markdown fences, no extra text):
+{ "verdict": "prove"|"disprove"|"neither", "explanation": "..." }`;
+
+/**
+ * Step 4d: Compile all source evaluations into a final verdict.
+ */
+export const STEP4_VERDICT_PROMPT = `You are an expert fact-checker compiling a final assessment. You evaluated a statement against multiple web sources. Review all evaluations and produce:
+- Overall truth assessment (1-2 sentences summarizing what the evidence says)
+- Key supporting evidence (max 3 most compelling items)
+- Key contradicting evidence (max 3 most compelling items)
+- Confidence level (0-100, where 0 = no reliable evidence, 100 = overwhelming consensus)
+
+Return ONLY valid JSON (no markdown fences, no extra text):
+{ "truthAssessment": "...", "supportingEvidence": ["..."], "contradictingEvidence": ["..."], "confidence": 75 }`;

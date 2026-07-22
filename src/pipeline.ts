@@ -11,6 +11,9 @@ import type {
   PipelineProgress,
   Statement,
   Speaker,
+  FactCheckSourceEval,
+  FactCheckVerdict,
+  FactCheckProgress,
 } from "./types";
 import {
   AnalysisResultSchema,
@@ -25,6 +28,7 @@ import {
   STEP2_RELATIONS_PROMPT,
   STEP3_SCORING_PROMPT,
 } from "./prompts";
+import { runFactCheck } from "./factCheck";
 
 const MODEL = "deepseek-chat";
 
@@ -108,12 +112,20 @@ export async function runAnalysisPipeline(
   apiKey: string,
   onProgress: (progress: PipelineProgress) => void,
   onStatements: (statements: Statement[]) => void,
-  onPartialResult: (result: PartialAnalysisResult) => void
+  onPartialResult: (result: PartialAnalysisResult) => void,
+  braveApiKey?: string,
+  onFactCheckProgress?: (progress: FactCheckProgress) => void,
+  onStatementFactChecked?: (
+    statementId: string,
+    sources: FactCheckSourceEval[],
+    verdict: FactCheckVerdict | null
+  ) => void
 ): Promise<AnalysisResult> {
   if (!apiKey.trim()) throw new Error("API key is required.");
   if (!text.trim()) throw new Error("Argument text is required.");
 
-  const totalSteps = 3; // extract, relations, scoring
+  const hasFactCheck = !!braveApiKey?.trim();
+  const totalSteps = hasFactCheck ? 4 : 3;
   let extractedStatements: Statement[] = [];
   let speakers: Speaker[] = [];
 
@@ -425,6 +437,41 @@ export async function runAnalysisPipeline(
       } catch {
         // Scoring failure is non-fatal — keep default scores
       }
+    }
+  }
+
+  // ── Step 4 (optional): Fact-checking via Brave LLM Context API ──
+  if (hasFactCheck && onFactCheckProgress && onStatementFactChecked && braveApiKey) {
+    emitProgress(
+      onProgress,
+      "fact_checking",
+      "Fact-checking statements against web sources...",
+      extractedStatements.length,
+      4,
+      totalSteps
+    );
+
+    try {
+      await runFactCheck(
+        extractedStatements,
+        text,
+        apiKey,
+        braveApiKey,
+        {
+          onProgress: onFactCheckProgress,
+          onStatementUpdate: (stmtId, sources, verdict) => {
+            // Merge into statements in-place
+            const stmt = extractedStatements.find((s) => s.id === stmtId);
+            if (stmt) {
+              (stmt as any).factCheckSources = sources;
+              (stmt as any).factCheckResult = verdict ?? undefined;
+            }
+            onStatementFactChecked!(stmtId, sources, verdict);
+          },
+        }
+      );
+    } catch {
+      // Fact-checking failure is non-fatal — continue with whatever we have
     }
   }
 

@@ -16,7 +16,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const keyPath = resolve(__dirname, "..", ".api-key");
 let API_KEY: string;
 try {
-  API_KEY = readFileSync(keyPath, "utf-8").trim();
+  API_KEY = readFileSync(keyPath, "utf-8").split("\n")[0]?.trim() ?? "";
 } catch {
   console.error("❌ No .api-key file found at", keyPath);
   console.error("   Create it with your DeepSeek API key (just the key, no quotes).");

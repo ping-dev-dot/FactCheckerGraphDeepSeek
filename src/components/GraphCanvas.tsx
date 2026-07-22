@@ -12,7 +12,7 @@ import {
   BackgroundVariant,
 } from "@xyflow/react";
 import dagre from "dagre";
-import type { AnalysisResult, PartialAnalysisResult } from "../types";
+import type { AnalysisResult, PartialAnalysisResult, FactCheckVerdict } from "../types";
 import { StatementNode } from "./StatementNode";
 import { ArgumentEdge } from "./ArgumentEdge";
 import type { StatementNodeData } from "./StatementNode";
@@ -24,11 +24,16 @@ const edgeTypes = { argumentEdge: ArgumentEdge };
 interface GraphCanvasProps {
   /** Full or partial result. Works with both. */
   result: AnalysisResult | PartialAnalysisResult;
+  /** Per-statement fact-check verdicts for confidence display on nodes. */
+  factCheckVerdicts?: Record<string, FactCheckVerdict | null>;
   onNodeClick: (nodeId: string) => void;
   onCanvasClick: () => void;
 }
 
-function layoutGraph(result: AnalysisResult | PartialAnalysisResult): {
+function layoutGraph(
+  result: AnalysisResult | PartialAnalysisResult,
+  factCheckVerdicts?: Record<string, FactCheckVerdict | null>
+): {
   nodes: Node[];
   edges: Edge[];
 } {
@@ -97,6 +102,7 @@ function layoutGraph(result: AnalysisResult | PartialAnalysisResult): {
       data: {
         ...stmt,
         factCheckDifficulty: stmt.factCheckDifficulty ?? 50,
+        factCheckResult: factCheckVerdicts?.[stmt.id] ?? undefined,
         hasFallacy,
         isInCycle,
         speakerName,
@@ -133,12 +139,13 @@ function layoutGraph(result: AnalysisResult | PartialAnalysisResult): {
 
 export function GraphCanvas({
   result,
+  factCheckVerdicts,
   onNodeClick,
   onCanvasClick,
 }: GraphCanvasProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => layoutGraph(result),
-    [result]
+    () => layoutGraph(result, factCheckVerdicts),
+    [result, factCheckVerdicts]
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -190,8 +197,9 @@ export function GraphCanvas({
           nodeColor={(n) => {
             const d = n.data as StatementNodeData | undefined;
             if (!d) return "#585b70";
-            if (d.factCheckDifficulty <= 30) return "#a6e3a1";
-            if (d.factCheckDifficulty <= 70) return "#f9e2af";
+            const score = d.factCheckResult?.confidence ?? d.factCheckDifficulty;
+            if (score >= 70) return "#a6e3a1";
+            if (score >= 40) return "#f9e2af";
             return "#f38ba8";
           }}
           maskColor="rgba(17, 17, 27, 0.7)"
