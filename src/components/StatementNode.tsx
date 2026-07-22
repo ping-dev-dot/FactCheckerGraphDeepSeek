@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import type { Statement } from "../types";
+import type { Statement, FactCheckVerdict } from "../types";
 import { difficultyColor, difficultyBgColor, FALLACY_COLOR } from "../types";
 
 export type StatementNodeData = Statement & {
@@ -7,12 +7,15 @@ export type StatementNodeData = Statement & {
   isInCycle: boolean;
   speakerName?: string;
   speakerColor?: string;
+  factCheckResult?: FactCheckVerdict | null;
 };
 
 export function StatementNode({ data, selected }: NodeProps) {
   const node = data as unknown as StatementNodeData;
-  const bg = difficultyBgColor(node.factCheckDifficulty);
-  const border = difficultyColor(node.factCheckDifficulty);
+  const hasVerdict = !!node.factCheckResult;
+  const diffScore = hasVerdict ? 100 - node.factCheckResult!.confidence : node.factCheckDifficulty;
+  const bg = difficultyBgColor(diffScore);
+  const border = difficultyColor(diffScore);
   const cycleBorder = node.isInCycle ? "#cba6f7" : border;
   const fallacyBorder = node.hasFallacy ? FALLACY_COLOR : cycleBorder;
 
@@ -53,18 +56,41 @@ export function StatementNode({ data, selected }: NodeProps) {
         {node.text}
       </p>
       <div className="flex items-center gap-2 mt-2">
-        <div className="flex-1 h-1.5 rounded-full bg-[#313244] overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{
-              width: `${node.factCheckDifficulty}%`,
-              background: `linear-gradient(90deg, #a6e3a1, #f9e2af, #f38ba8)`,
-            }}
-          />
-        </div>
-        <span className="text-xs text-[#a6adc8] font-mono">
-          {node.factCheckDifficulty}%
-        </span>
+        {node.factCheckResult ? (
+          <>
+            <div className="flex-1 h-1.5 rounded-full bg-[#313244] overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${node.factCheckResult.confidence}%`,
+                  background: node.factCheckResult.confidence >= 70
+                    ? "#a6e3a1"
+                    : node.factCheckResult.confidence >= 40
+                      ? "#f9e2af"
+                      : "#f38ba8",
+                }}
+              />
+            </div>
+            <span className="text-xs text-[#a6adc8] font-mono">
+              {node.factCheckResult.confidence}%
+            </span>
+          </>
+        ) : (
+          <>
+            <div className="flex-1 h-1.5 rounded-full bg-[#313244] overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${node.factCheckDifficulty}%`,
+                  background: `linear-gradient(90deg, #a6e3a1, #f9e2af, #f38ba8)`,
+                }}
+              />
+            </div>
+            <span className="text-xs text-[#a6adc8] font-mono">
+              {node.factCheckDifficulty}%
+            </span>
+          </>
+        )}
       </div>
       {node.hasFallacy && (
         <div className="mt-1.5 text-xs text-[#f38ba8] font-semibold">

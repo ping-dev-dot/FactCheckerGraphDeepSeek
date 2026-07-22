@@ -8,6 +8,25 @@ export const StatementSchema = z.object({
   factCheckDifficulty: z.number().min(0).max(100),
   factCheckExplanation: z.string().optional(),
   speakerId: z.string().optional(),
+  factCheckResult: z
+    .object({
+      truthAssessment: z.string(),
+      supportingEvidence: z.array(z.string()),
+      contradictingEvidence: z.array(z.string()),
+      confidence: z.number().min(0).max(100),
+    })
+    .optional(),
+  factCheckSources: z
+    .array(
+      z.object({
+        url: z.string(),
+        title: z.string(),
+        hostname: z.string(),
+        verdict: z.enum(["prove", "disprove", "neither"]),
+        explanation: z.string(),
+      })
+    )
+    .optional(),
 });
 
 export const SpeakerSchema = z.object({
@@ -92,6 +111,7 @@ export type PipelineStage =
   | "extracting"
   | "analyzing_relations"
   | "scoring"
+  | "fact_checking"
   | "complete";
 
 export interface PipelineProgress {
@@ -100,6 +120,36 @@ export interface PipelineProgress {
   statementsFound: number;
   totalSteps: number;
   currentStep: number;
+}
+
+// --- Fact-check types ---
+
+export interface FactCheckSourceEval {
+  url: string;
+  title: string;
+  hostname: string;
+  verdict: "prove" | "disprove" | "neither";
+  explanation: string;
+}
+
+export interface FactCheckVerdict {
+  statementId: string;
+  truthAssessment: string;
+  supportingEvidence: string[];
+  contradictingEvidence: string[];
+  confidence: number; // 0-100
+}
+
+export interface FactCheckProgress {
+  stage: "generating_terms" | "searching" | "evaluating" | "finalizing";
+  statementId: string;
+  totalSources: number;
+  evaluatedSources: number;
+  currentSource?: {
+    url: string;
+    title: string;
+    verdict?: "prove" | "disprove" | "neither";
+  };
 }
 
 // --- App state ---
