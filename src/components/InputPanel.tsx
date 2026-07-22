@@ -37,14 +37,19 @@ export function InputPanel({
 
   const isComplete = pipelineProgress?.stage === "complete";
 
-  useEffect(() => {
-    if (!isLoading || !pipelineProgress || isComplete) return;
-    const start = Date.now() - (pipelineProgress.elapsedMs ?? 0);
-    const interval = setInterval(() => {
-      setElapsedSec(Math.max(0, (Date.now() - start) / 1000));
-    }, 100);
-    return () => clearInterval(interval);
-  }, [isLoading, pipelineProgress, isComplete]);
+useEffect(() => {
+  if (!isLoading) {
+    setElapsedSec(0);
+    return;
+  }
+  if (!pipelineProgress || isComplete) return;
+  const start = Date.now() - (pipelineProgress.elapsedMs ?? 0);
+  setElapsedSec(Math.max(0, (pipelineProgress.elapsedMs ?? 0) / 1000));
+  const interval = setInterval(() => {
+    setElapsedSec(Math.max(0, (Date.now() - start) / 1000));
+  }, 100);
+  return () => clearInterval(interval);
+}, [isLoading, pipelineProgress?.stage, isComplete]);
 
   const displayTime = isComplete
     ? ((pipelineProgress?.elapsedMs ?? (elapsedSec * 1000)) / 1000).toFixed(1)
