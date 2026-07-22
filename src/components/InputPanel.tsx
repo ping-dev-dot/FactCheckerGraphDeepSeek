@@ -34,6 +34,7 @@ export function InputPanel({
   pipelineProgress,
 }: InputPanelProps) {
   const [elapsedSec, setElapsedSec] = useState(0);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const isComplete = pipelineProgress?.stage === "complete";
 
@@ -49,7 +50,7 @@ useEffect(() => {
     setElapsedSec(Math.max(0, (Date.now() - start) / 1000));
   }, 100);
   return () => clearInterval(interval);
-}, [isLoading, pipelineProgress?.stage, isComplete]);
+  }, [isLoading, pipelineProgress?.stage, isComplete, pipelineProgress?.elapsedMs]);
 
   const displayTime = isComplete
     ? ((pipelineProgress?.elapsedMs ?? (elapsedSec * 1000)) / 1000).toFixed(1)
@@ -106,14 +107,24 @@ useEffect(() => {
         <label className="text-xs text-[#a6adc8] font-medium">
           {apiProvider === "openrouter" ? "OpenRouter API Key" : "DeepSeek API Key"}
         </label>
-        <input
-          type="password"
-          value={apiKey}
-          onChange={(e) => onApiKeyChange(e.target.value)}
-          placeholder={apiProvider === "openrouter" ? "sk-or-v1-..." : "sk-..."}
-          className="w-full px-3 py-2 bg-[#1e1e2e] border border-[#45475a] rounded-lg text-[#cdd6f4] text-sm
-                     placeholder:text-[#585b70] focus:outline-none focus:border-[#89b4fa] transition-colors"
-        />
+        <div className="relative flex items-center">
+          <input
+            type={showApiKey ? "text" : "password"}
+            value={apiKey}
+            onChange={(e) => onApiKeyChange(e.target.value)}
+            placeholder={apiProvider === "openrouter" ? "sk-or-v1-..." : "sk-..."}
+            className="w-full pl-3 pr-9 py-2 bg-[#1e1e2e] border border-[#45475a] rounded-lg text-[#cdd6f4] text-sm
+                       placeholder:text-[#585b70] focus:outline-none focus:border-[#89b4fa] transition-colors font-mono text-xs"
+          />
+          <button
+            type="button"
+            onClick={() => setShowApiKey((prev) => !prev)}
+            title={showApiKey ? "Hide API key" : "Show API key"}
+            className="absolute right-2 text-[#a6adc8] hover:text-[#cdd6f4] p-1 cursor-pointer transition-colors text-xs"
+          >
+            {showApiKey ? "👁️" : "🙈"}
+          </button>
+        </div>
       </div>
 
       {/* OpenRouter Model Input */}

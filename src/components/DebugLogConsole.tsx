@@ -54,7 +54,7 @@ const handleCopy = async () => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[90vw] md:w-[600px] max-h-[400px] bg-[#181825] border border-[#313244] rounded-xl shadow-2xl flex flex-col overflow-hidden font-mono text-xs">
+    <div className="fixed bottom-2 left-2 right-2 sm:left-auto sm:right-4 sm:bottom-4 z-50 w-auto sm:w-[560px] max-h-[60vh] sm:max-h-[400px] bg-[#181825] border border-[#313244] rounded-xl shadow-2xl flex flex-col overflow-hidden font-mono text-xs">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 bg-[#1e1e2e] border-b border-[#313244] select-none">
         <div className="flex items-center gap-2">

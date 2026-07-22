@@ -81,7 +81,10 @@ export default function App() {
       ? displayResult.statements.find((s) => s.id === selectedNodeId) ?? null
       : null;
 
+  const [mobileInputOpen, setMobileInputOpen] = useState(false);
+
   const handleSubmit = useCallback(async () => {
+    setMobileInputOpen(false);
     setStatus("running");
     setErrorMessage("");
     setResult(null);
@@ -188,9 +191,31 @@ export default function App() {
   const isRunning = status === "running" || status === "partial";
 
   return (
-    <div className="h-screen w-screen flex flex-col lg:flex-row bg-[#11111b] overflow-hidden">
-      {/* Left panel — input (full width on mobile, fixed on desktop) */}
-      <div className="w-full lg:w-[360px] lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-[#313244] bg-[#1e1e2e] flex flex-col max-h-[45vh] lg:max-h-none lg:h-full">
+    <div className="h-screen w-screen flex flex-col lg:flex-row bg-[#11111b] overflow-hidden relative">
+      {/* Mobile Header Bar (visible on < lg) */}
+      <div className="lg:hidden flex items-center justify-between px-4 py-2.5 bg-[#1e1e2e] border-b border-[#313244] z-30 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-[#cdd6f4]">Argument Graph</span>
+          {pipelineProgress && (
+            <span className="px-2 py-0.5 text-[10px] font-mono rounded-full bg-[#313244] text-[#89b4fa]">
+              {pipelineProgress.stage}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => setMobileInputOpen((prev) => !prev)}
+          className="px-3 py-1.5 text-xs rounded-lg bg-[#313244] text-[#cdd6f4] hover:bg-[#45475a] transition-colors flex items-center gap-1.5 cursor-pointer font-medium border border-[#45475a]"
+        >
+          <span>{mobileInputOpen ? "✕ Close" : "⚙️ Input & Settings"}</span>
+        </button>
+      </div>
+
+      {/* Left panel — input (drawer overlay on mobile, fixed on desktop) */}
+      <div
+        className={`${
+          mobileInputOpen ? "flex" : "hidden lg:flex"
+        } fixed lg:static inset-0 top-[49px] lg:top-0 z-40 lg:z-auto w-full lg:w-[360px] lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-[#313244] bg-[#1e1e2e] flex-col h-[calc(100vh-49px)] lg:h-full overflow-hidden`}
+      >
         <InputPanel
           inputText={inputText}
           onInputTextChange={setInputText}
@@ -248,7 +273,7 @@ export default function App() {
       </div>
 
       {/* Center — graph (flex-1 on mobile and desktop) */}
-      <div className="flex-1 min-w-0 relative min-h-[45vh] lg:min-h-0">
+      <div className="flex-1 min-w-0 relative h-full w-full">
         {displayResult && displayResult.statements && displayResult.statements.length > 0 ? (
           <ReactFlowProvider>
             <GraphCanvas
