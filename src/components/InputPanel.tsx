@@ -33,7 +33,7 @@ export function InputPanel({
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4 h-full">
+    <div className="flex flex-col gap-4 p-4 h-full overflow-y-auto">
       <h1 className="text-xl font-bold text-[#cdd6f4]">Argument Graph Analyzer</h1>
 
       {/* API Key */}
@@ -87,7 +87,7 @@ export function InputPanel({
           placeholder="Paste or type your argument here..."
           className="flex-1 w-full px-3 py-2 bg-[#1e1e2e] border border-[#45475a] rounded-lg text-[#cdd6f4] text-sm
                      placeholder:text-[#585b70] focus:outline-none focus:border-[#89b4fa] transition-colors resize-none
-                     min-h-[150px]"
+                     min-h-[120px] lg:min-h-[150px]"
         />
       </div>
 
