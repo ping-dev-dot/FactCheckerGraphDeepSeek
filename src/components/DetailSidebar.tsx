@@ -23,7 +23,7 @@ export function DetailSidebar({ statement, result, onClose }: DetailSidebarProps
     <>
       {/* Mobile overlay backdrop */}
       <div 
-        className="fixed lg:hidden inset-0 bg-black/50 z-40"
+        className="fixed lg:hidden inset-0 bg-black/50 z-40 cursor-pointer"
         onClick={onClose}
       />
       
@@ -36,7 +36,7 @@ export function DetailSidebar({ statement, result, onClose }: DetailSidebarProps
           </h2>
           <button
             onClick={onClose}
-            className="text-[#585b70] hover:text-[#cdd6f4] transition-colors text-lg leading-none"
+            className="text-[#585b70] hover:text-[#cdd6f4] transition-colors text-lg leading-none cursor-pointer"
           >
             ✕
           </button>
