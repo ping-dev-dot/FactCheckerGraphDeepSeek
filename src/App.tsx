@@ -48,9 +48,9 @@ export default function App() {
   }, []);
 
   return (
-    <div className="h-screen w-screen flex bg-[#11111b] overflow-hidden">
-      {/* Left panel — input */}
-      <div className="w-[360px] flex-shrink-0 border-r border-[#313244] bg-[#1e1e2e] flex flex-col">
+    <div className="h-screen w-screen flex flex-col lg:flex-row bg-[#11111b] overflow-hidden">
+      {/* Left panel — input (full width on mobile, fixed on desktop) */}
+      <div className="w-full lg:w-[360px] lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-[#313244] bg-[#1e1e2e] flex flex-col max-h-[45vh] lg:max-h-none lg:h-full">
         <InputPanel
           inputText={inputText}
           onInputTextChange={setInputText}
@@ -81,8 +81,8 @@ export default function App() {
         )}
       </div>
 
-      {/* Center — graph */}
-      <div className="flex-1 min-w-0 relative">
+      {/* Center — graph (flex-1 on mobile and desktop) */}
+      <div className="flex-1 min-w-0 relative min-h-[45vh] lg:min-h-0">
         {result ? (
           <ReactFlowProvider>
             <GraphCanvas
@@ -118,7 +118,7 @@ export default function App() {
         )}
       </div>
 
-      {/* Right — detail sidebar */}
+      {/* Right — detail sidebar (overlay on mobile, fixed on desktop) */}
       {selectedStatement && result && (
         <DetailSidebar
           statement={selectedStatement}
