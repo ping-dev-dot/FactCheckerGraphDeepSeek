@@ -6,7 +6,7 @@ const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 
 const SYSTEM_PROMPT = `You are an expert logical analyst. Given an argumentative text, you must:
 
-1. Decompose the text into **atomic statements** — each a single, self-contained claim. Assign each a unique ID like "S1", "S2", etc.
+1. Decompose the text into **atomic statements** — each a single, self-contained claim. Resolve references to other statements. Assign each a unique ID like "S1", "S2", etc. DO NOT treat sentences as claims go deeper
 2. For each statement, estimate its **fact-check difficulty** as a percentage (0% = trivially verifiable, 100% = practically impossible to verify). Provide a short explanation.
 3. Identify **logical relationships** between statements: implication (A→B), conjunction (A∧B), disjunction (A∨B), supports, contradiction, or fallacy. Each relation links a "from" and "to" statement ID.
 4. Flag **logical fallacies** with the statement ID they apply to, the fallacy type (e.g., Ad Hominem, Straw Man, False Dilemma, Begging the Question, Circular Reasoning, etc.), and a short description.
