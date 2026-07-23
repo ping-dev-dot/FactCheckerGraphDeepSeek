@@ -104,7 +104,12 @@ export interface PipelineProgress {
   totalTokens?: number;
 }
 
+// --- Theme Mode ---
+
+export type ThemeMode = "dark" | "light";
+
 // --- API Provider & Settings ---
+
 
 export type ApiProvider = "deepseek" | "openrouter";
 
@@ -167,29 +172,29 @@ export class PipelineStepError extends Error {
 
 // --- Node color mapping based on fact-check difficulty ---
 export function difficultyColor(percent: number): string {
-  if (percent <= 30) return "#a6e3a1"; // green — easy to check
-  if (percent <= 70) return "#f9e2af"; // yellow — moderate
-  return "#f38ba8"; // red — hard to check
+  if (percent <= 30) return "#22c55e"; // Easy — clear green
+  if (percent <= 70) return "#eab308"; // Moderate — clear amber
+  return "#ef4444"; // Hard — clear red
 }
 
-export function difficultyBgColor(percent: number): string {
-  if (percent <= 30) return "#1e3a1e";
-  if (percent <= 70) return "#3a3510";
-  return "#3a1020";
+export function difficultyBgColor(_percent: number): string {
+  return "#1c1c20"; // Quiet, unified neutral dark surface for all nodes
 }
 
-// --- Speaker color palette (Catppuccin) ---
+
+// --- Speaker color palette (Quiet, dignified muted tones) ---
 export const SPEAKER_COLORS = [
-  "#89b4fa", // blue
-  "#a6e3a1", // green
-  "#f9e2af", // yellow
-  "#f38ba8", // red
-  "#cba6f7", // mauve
-  "#94e2d5", // teal
-  "#fab387", // peach
-  "#b4befe", // lavender
+  "#60a5fa", // muted blue
+  "#818cf8", // muted indigo
+  "#34d399", // muted emerald
+  "#fbbf24", // muted amber
+  "#a78bfa", // muted purple
+  "#2dd4bf", // muted teal
+  "#f87171", // muted rose
+  "#fb923c", // muted orange
 ];
 
-// --- Fallacy highlight color ---
-export const FALLACY_COLOR = "#f38ba8";
-export const CYCLE_COLOR = "#cba6f7";
+// --- Fallacy & Cycle highlight colors ---
+export const FALLACY_COLOR = "#ef4444";
+export const CYCLE_COLOR = "#a855f7";
+

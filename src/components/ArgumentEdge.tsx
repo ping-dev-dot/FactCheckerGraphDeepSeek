@@ -4,10 +4,12 @@ import {
   getBezierPath,
   type EdgeProps,
 } from "@xyflow/react";
+import type { ThemeMode } from "../types";
 
 export type CycleEdgeData = {
   isCycle: boolean;
   label?: string;
+  themeMode?: ThemeMode;
 };
 
 export function ArgumentEdge({
@@ -22,6 +24,7 @@ export function ArgumentEdge({
   markerEnd,
 }: EdgeProps) {
   const edgeData = (data ?? {}) as CycleEdgeData;
+  const isLight = edgeData.themeMode === "light";
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -32,42 +35,39 @@ export function ArgumentEdge({
   });
 
   const isCycle = edgeData.isCycle;
+  const defaultStroke = isLight ? "#a1a1aa" : "#52525b";
 
   return (
     <>
-      {/* Glow layer for cycles */}
-      {isCycle && (
-        <BaseEdge
-          path={edgePath}
-          style={{
-            stroke: "#cba6f7",
-            strokeWidth: 6,
-            opacity: 0.25,
-            filter: "blur(4px)",
-          }}
-        />
-      )}
       <BaseEdge
         id={id}
         path={edgePath}
         style={{
-          stroke: isCycle ? "#cba6f7" : "#585b70",
-          strokeWidth: isCycle ? 2.5 : 1.5,
-          strokeDasharray: isCycle ? "8 4" : undefined,
-          animation: isCycle ? "dashdraw 0.6s linear infinite" : undefined,
+          stroke: isCycle ? "#a855f7" : defaultStroke,
+          strokeWidth: isCycle ? 2 : 1.5,
+          strokeDasharray: isCycle ? "5 4" : undefined,
         }}
         markerEnd={markerEnd}
       />
-      <EdgeLabelRenderer>
-        <div
-          className="absolute text-[10px] font-mono text-[#a6adc8] bg-[#1e1e2e]/80 px-1.5 py-0.5 rounded pointer-events-none"
-          style={{
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-          }}
-        >
-          {edgeData.label ?? ""}
-        </div>
-      </EdgeLabelRenderer>
+      {edgeData.label && (
+        <EdgeLabelRenderer>
+          <div
+            className={`absolute text-[10px] font-mono border px-1.5 py-0.5 rounded pointer-events-none shadow-sm ${
+              isLight
+                ? "text-[#71717a] bg-[#ffffff] border-[#e4e4e7]"
+                : "text-[#f4f4f5] bg-[#1c1c20] border-[#3f3f46]"
+            }`}
+            style={{
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            }}
+          >
+            {edgeData.label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+
     </>
   );
 }
+
+

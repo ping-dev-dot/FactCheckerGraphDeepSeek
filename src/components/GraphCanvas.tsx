@@ -13,7 +13,8 @@ import {
   BackgroundVariant,
 } from "@xyflow/react";
 import dagre from "dagre";
-import type { AnalysisResult, PartialAnalysisResult } from "../types";
+import { Focus } from "lucide-react";
+import type { AnalysisResult, PartialAnalysisResult, ThemeMode } from "../types";
 import { StatementNode } from "./StatementNode";
 import { ArgumentEdge } from "./ArgumentEdge";
 import type { StatementNodeData } from "./StatementNode";
@@ -27,9 +28,13 @@ interface GraphCanvasProps {
   result: AnalysisResult | PartialAnalysisResult;
   onNodeClick: (nodeId: string) => void;
   onCanvasClick: () => void;
+  themeMode?: ThemeMode;
 }
 
-function layoutGraph(result: AnalysisResult | PartialAnalysisResult): {
+function layoutGraph(
+  result: AnalysisResult | PartialAnalysisResult,
+  themeMode: ThemeMode = "dark"
+): {
   nodes: Node[];
   edges: Edge[];
 } {
@@ -50,9 +55,13 @@ function layoutGraph(result: AnalysisResult | PartialAnalysisResult): {
     }
   }
 
-  const fallacyNodeIds = new Set<string>();
+  const fallacyMap = new Map<string, string[]>();
   for (const f of result.fallacies ?? []) {
-    fallacyNodeIds.add(f.statementId);
+    const existing = fallacyMap.get(f.statementId) ?? [];
+    if (!existing.includes(f.fallacyType)) {
+      existing.push(f.fallacyType);
+    }
+    fallacyMap.set(f.statementId, existing);
   }
 
   const statements = result.statements ?? [];
@@ -68,18 +77,14 @@ function layoutGraph(result: AnalysisResult | PartialAnalysisResult): {
     g.setEdge(rel.from, rel.to);
   }
 
-  // If no edges, still run layout so nodes have positions
-  if (relations.length === 0 && statements.length > 0) {
-    // dagre needs edges to produce meaningful positions;
-    // if none exist, use a simple grid layout
-    dagre.layout(g);
-  } else {
-    dagre.layout(g);
-  }
+  dagre.layout(g);
+
+  const isLight = themeMode === "light";
 
   const nodes: Node[] = statements.map((stmt) => {
     const pos = g.node(stmt.id);
-    const hasFallacy = fallacyNodeIds.has(stmt.id);
+    const statementFallacies = fallacyMap.get(stmt.id) ?? [];
+    const hasFallacy = statementFallacies.length > 0;
     const isInCycle = cycleNodeIds.has(stmt.id);
 
     // Resolve speaker name and color
@@ -99,9 +104,11 @@ function layoutGraph(result: AnalysisResult | PartialAnalysisResult): {
         ...stmt,
         factCheckDifficulty: stmt.factCheckDifficulty ?? 50,
         hasFallacy,
+        fallacyTypes: statementFallacies,
         isInCycle,
         speakerName,
         speakerColor,
+        themeMode,
       } satisfies StatementNodeData,
     };
   });
@@ -118,14 +125,15 @@ function layoutGraph(result: AnalysisResult | PartialAnalysisResult): {
       data: {
         isCycle: edgeIsCycle,
         label: rel.label ?? rel.type,
+        themeMode,
       } satisfies CycleEdgeData,
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: edgeIsCycle ? "#cba6f7" : "#585b70",
-        width: 16,
-        height: 16,
+        color: edgeIsCycle ? "#a855f7" : isLight ? "#a1a1aa" : "#52525b",
+        width: 14,
+        height: 14,
       },
-      animated: edgeIsCycle,
+      animated: false,
     };
   });
 
@@ -136,17 +144,19 @@ export function GraphCanvas({
   result,
   onNodeClick,
   onCanvasClick,
+  themeMode = "dark",
 }: GraphCanvasProps) {
+  const isLight = themeMode === "light";
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => layoutGraph(result),
-    [result]
+    () => layoutGraph(result, themeMode),
+    [result, themeMode]
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const { fitView } = useReactFlow();
 
-  // Re-layout when result changes
+  // Re-layout when result or theme changes
   useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
@@ -164,7 +174,7 @@ export function GraphCanvas({
   }, [onCanvasClick]);
 
   const handleResetView = useCallback(() => {
-    fitView({ padding: 0.3, duration: 300 });
+    fitView({ padding: 0.3, duration: 250 });
   }, [fitView]);
 
   const hasContent = (result.statements ?? []).length > 0;
@@ -180,30 +190,31 @@ export function GraphCanvas({
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        colorMode={themeMode}
         fitView
         fitViewOptions={{ padding: 0.3 }}
         minZoom={0.1}
         maxZoom={2}
         attributionPosition="bottom-right"
-        className="bg-[#11111b]"
+        className={isLight ? "bg-[#f8f9fa]" : "bg-[#09090b]"}
       >
         <Background
           variant={BackgroundVariant.Dots}
-          gap={20}
+          gap={24}
           size={1}
-          color="#313244"
+          color={isLight ? "#e4e4e7" : "#3f3f46"}
         />
-        <Controls className="!bg-[#1e1e2e] !border-[#45475a] !rounded-lg" />
+        <Controls className={isLight ? "!bg-[#ffffff] !border-[#e4e4e7] !text-[#18181b] shadow-sm" : "!bg-[#18181b] !border-[#3f3f46] shadow-sm"} />
         <MiniMap
           nodeColor={(n) => {
             const d = n.data as StatementNodeData | undefined;
-            if (!d) return "#585b70";
-            if (d.factCheckDifficulty <= 30) return "#a6e3a1";
-            if (d.factCheckDifficulty <= 70) return "#f9e2af";
-            return "#f38ba8";
+            if (!d) return isLight ? "#a1a1aa" : "#71717a";
+            if (d.factCheckDifficulty <= 30) return "#22c55e";
+            if (d.factCheckDifficulty <= 70) return "#eab308";
+            return "#ef4444";
           }}
-          maskColor="rgba(17, 17, 27, 0.7)"
-          className="!bg-[#1e1e2e] !border-[#45475a] !rounded-lg"
+          maskColor={isLight ? "rgba(248, 249, 250, 0.75)" : "rgba(9, 9, 11, 0.85)"}
+          className={isLight ? "!bg-[#ffffff] !border-[#e4e4e7]" : "!bg-[#18181b] !border-[#3f3f46]"}
         />
       </ReactFlow>
 
@@ -212,15 +223,21 @@ export function GraphCanvas({
         <button
           onClick={handleResetView}
           title="Reset graph view"
-          className="absolute bottom-20 right-4 z-20 w-9 h-9 flex items-center justify-center 
-                     rounded-full bg-[#1e1e2e] border border-[#45475a] text-[#cdd6f4] 
-                     hover:bg-[#313244] hover:border-[#89b4fa] hover:text-[#89b4fa]
-                     transition-colors cursor-pointer shadow-lg text-lg leading-none"
+          className={`absolute bottom-20 right-4 z-20 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors cursor-pointer shadow-sm flex items-center gap-1.5 ${
+            isLight
+              ? "bg-[#ffffff] border-[#e4e4e7] text-[#71717a] hover:bg-[#f4f4f5] hover:text-[#18181b]"
+              : "bg-[#18181b] border-[#3f3f46] text-[#a1a1aa] hover:bg-[#27272a] hover:text-[#f4f4f5]"
+          }`}
           aria-label="Reset graph view"
         >
-          ↺
+          <Focus className="w-3.5 h-3.5" />
+          <span>Recenter</span>
         </button>
       )}
     </div>
   );
 }
+
+
+
+
