@@ -1,0 +1,16 @@
+{
+  "planPath": "docs/plans/2026-07-23-cloudflare-migration-plan.md",
+  "completedUnits": [
+    "U1: Project scaffold & dependencies",
+    "U2: Shared schemas (effect/Schema)",
+    "U3: Shared utilities",
+    "U4: DO pipeline (Effect.gen orchestration)",
+    "U5: Worker HTTP layer",
+    "U6: Client update",
+    "U7: Build & deploy wiring",
+    "FIX: crypto.randomUUID (shared id-generator)",
+    "FIX: AI client provider (ai-gateway-provider → @ai-sdk/openai-compatible) + E2E test suite"
+  ],
+  "updatedAt": "2026-07-23T18:12:10.847Z",
+  "status": "active"
+}

@@ -1,8 +1,6 @@
-# 🧠 FactCheckerGraphDeepSeek
+# 🧠 Argument Graph Analyzer
 
-**Decompose argumentative text into atomic statements, map logical relationships as an interactive graph, and detect fallacies & circular reasoning — powered by DeepSeek.**
-
-[![Deploy to GitHub Pages](https://github.com/HoodieRocks/FactCheckerGraphDeepSeek/actions/workflows/deploy.yml/badge.svg)](https://github.com/HoodieRocks/FactCheckerGraphDeepSeek/actions/workflows/deploy.yml)
+**Decompose argumentative text into atomic statements, map logical relationships as an interactive graph, and detect fallacies & circular reasoning — powered by DeepSeek via Cloudflare AI Gateway.**
 
 ## What It Does
 
@@ -15,7 +13,7 @@
 | Input | What You Get |
 |-------|--------------|
 | A valid deductive argument (e.g., modus ponens) | Clean implication chain with low fact-check difficulty |
-| Multi-speaker debate (Alice vs Bob on climate policy) | Speaker-colored nodes, contradiction relations detected, cycle in circular justifications |
+| Multi-speaker debate (Alice vs Bob on climate policy) | Speaker-colored nodes, contradiction relations detected |
 | Circular reasoning | Detected cycle highlighted in purple with animated edge |
 | A fallacious argument (ad hominem, straw man, false dilemma) | Each fallacy flagged on its statement with type and explanation |
 
@@ -23,195 +21,173 @@
 
 | Layer | Technology |
 |-------|-----------|
-| **UI** | React 19, Tailwind CSS 4 |
-| **Graph** | [ReactFlow](https://reactflow.dev/) (`@xyflow/react`) + [dagre](https://github.com/dagrejs/dagre) layout |
-| **Validation** | [Zod](https://zod.dev/) — runtime schema checking on every API response |
-| **AI** | [DeepSeek Chat API](https://api.deepseek.com/chat/completions) (`deepseek-chat` model) |
-| **Build** | Vite 8, TypeScript 6 |
-| **Deploy** | GitHub Pages via Actions |
+| **Frontend** | React 19, Tailwind CSS 4, Vite 8 |
+| **Graph** | ReactFlow (`@xyflow/react`) + dagre layout |
+| **Backend** | Cloudflare Workers + Durable Objects |
+| **Pipeline** | EffectJS — typed errors, structured concurrency, services/layers |
+| **AI** | DeepSeek (`deepseek-chat`) via Cloudflare AI Gateway (BYOK) |
+| **AI SDK** | Vercel AI SDK (`ai`) + `@ai-sdk/openai-compatible` |
+| **Validation** | effect/Schema — runtime validation on every API response |
+| **Deploy** | Cloudflare Workers via Wrangler |
 
 ## Quick Start
 
 ### Prerequisites
 - **Node.js** ≥ 20
-- A **DeepSeek API key** ([get one here](https://platform.deepseek.com/api_keys))
+- A Cloudflare account with:
+  - AI Gateway created with DeepSeek API key (BYOK)
+  - `CF_AIG_TOKEN` — a Cloudflare API token with AI Gateway access
 
 ### Run locally
 
 ```bash
 git clone https://github.com/HoodieRocks/FactCheckerGraphDeepSeek.git
 cd FactCheckerGraphDeepSeek
+
+# Set your AI Gateway token
+echo "CF_AIG_TOKEN=your-token-here" > .dev.vars
+
 npm install
-npm run dev
+npm run dev     # starts wrangler dev on http://localhost:8787
 ```
 
-Open `http://localhost:5173/FactCheckerGraphDeepSeek/`, paste your API key, enter an argument, and click **Analyze Argument**.
+No API key needed in the browser — the backend handles all AI Gateway authentication.
 
-### Build for production
+### Deploy
 
 ```bash
-npm run build     # runs tsc + vite build
-npm run preview   # preview the production build locally
+npx wrangler secret put CF_AIG_TOKEN   # one-time: set the gateway token
+npm run deploy                          # build + deploy
 ```
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  App.tsx (orchestrator — all state lives here)          │
-│                                                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐ │
-│  │ InputPanel    │  │ GraphCanvas  │  │ DetailSidebar │ │
-│  │ (left panel)  │  │ (center)     │  │ (right panel) │ │
-│  │              │  │              │  │               │ │
-│  │ • API key    │  │ • ReactFlow  │  │ • Statement   │ │
-│  │ • Presets    │  │ • dagre      │  │   details     │ │
-│  │ • Text area  │  │   auto-      │  │ • Fallacies   │ │
-│  │ • Submit     │  │   layout     │  │ • Cycles      │ │
-│  └──────┬───────┘  └──────┬───────┘  │ • Relations   │ │
-│         │                 │           │ • Speaker     │ │
-│         │          ┌──────┴──────┐    └───────────────┘ │
-│         └─────────→│  pipeline.ts│                       │
-│                    │ (multi-step │                       │
-│                    │  orchestrator)                      │
-│                    └──────┬──────┘                       │
-│                           │                              │
-│                    ┌──────┴──────┐                       │
-│                    │  streaming.ts│                      │
-│                    │  (SSE client)│                      │
-│                    └──────┬──────┘                       │
-│                           │                              │
-│                    ┌──────┴──────┐                       │
-│                    │ DeepSeek API│                       │
-│                    └─────────────┘                       │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  Browser (React SPA)                                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
+│  │ InputPanel    │  │ GraphCanvas  │  │ DetailSidebar     │  │
+│  │ • Presets     │  │ • ReactFlow  │  │ • Statement detail│  │
+│  │ • Text area   │  │ • dagre      │  │ • Fallacies       │  │
+│  │ • Submit      │  │   auto-layout│  │ • Cycles          │  │
+│  └──────┬───────┘  └──────────────┘  │ • Relations       │  │
+│         │ EventSource SSE             └───────────────────┘  │
+└─────────┼────────────────────────────────────────────────────┘
+          │ POST /api/analyze → GET /api/analyze/:id/stream
+          ▼
+┌──────────────────────────────────────────────────────────────┐
+│  Cloudflare Worker (src/worker.ts)                           │
+│  • Serves React SPA as static assets                         │
+│  • Routes /api/* to Durable Object                           │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+          ┌──────────────┴──────────────┐
+          ▼                             ▼
+┌─────────────────────┐    ┌──────────────────────────────────┐
+│  Durable Object      │    │  AI Gateway → DeepSeek           │
+│  (one per analysis)  │    │  • BYOK — key in Secrets Store  │
+│                      │    │  • AI SDK for streaming calls    │
+│  Step 0: Preprocess  │    │  • @ai-sdk/openai-compatible     │
+│  Step 1: Extract     │───▶│    + gateway.deepseek URL         │
+│  Step 2: Relations   │    │                                  │
+│  Step 3: Score        │    │                                  │
+│                      │    │                                  │
+│  Progress via SSE ───┼────┼──────────────────────────────▶   │
+└─────────────────────┘    └──────────────────────────────────┘
 ```
 
 ### Multi-step pipeline
 
-The analysis runs in 4 stages with live streaming feedback:
-
 ```
-User submits text
-  │
-  ▼
-Step 0: Preprocessing (client-side)
-  └─ detectSpeakers() — identifies named/role-based/unnamed speakers
-  └─ chunkText() — splits long texts at sentence boundaries
-  │
-  ▼
-Step 1: Statement Extraction (streaming)
-  └─ DeepSeek streams atomic propositions via SSE
-  └─ Each statement: self-contained claim + speakerId + difficulty
-  └─ UI: nodes appear in real time as they arrive
-  └─ Post-processor catches any missed conclusion markers ("therefore", "thus")
-  │
-  ▼
-Step 2: Relation & Fallacy Analysis (streaming)
-  └─ DeepSeek analyzes the finalized statement list
-  └─ Streams relations, fallacies, and cycles with live counts
-  └─ UI: edges appear progressively as relations are found
-  │
-  ▼
-Step 3: Fact-Check Scoring (batched per statement)
-  └─ Each statement scored for verifiability
-  └─ UI: difficulty bars update as scores arrive
+POST /api/analyze { text }
+  → Worker creates DO, stores text
+  → Browser connects GET /api/analyze/:id/stream (EventSource SSE)
+
+DO processes:
+  Step 0: Preprocessing
+    └─ detectSpeakers() + build userMessage with speaker context
+
+  Step 1: Statement Extraction (streaming via AI SDK)
+    └─ DeepSeek returns NDJSON token-by-token → incremental parse
+    └─ UI: nodes appear in real time as they arrive
+    └─ Post-processor: catches missed "therefore/thus/so" conclusions
+
+  Step 2: Relation & Fallacy Analysis
+    └─ DeepSeek analyzes finalized statement list
+    └─ Returns relations, fallacies, cycles
+    └─ UI: edges + badges appear
+
+  Step 3: Fact-Check Scoring (parallel via Effect.forEach)
+    └─ Each statement scored independently
+    └─ UI: difficulty bars update
 ```
 
-**Each step fails independently** — if step 2 fails, you still see all statements. Partial results are always surfaced.
-
-### Key design decisions
-
-- **Multi-step streaming pipeline**: Statements stream via SSE (users see results immediately), relations/fallacies/cycles stream with live counts, fact-check scores batch in. Total time ~20s for a complex debate.
-- **Self-contained propositions**: Statements are atomic logical claims, not meta-reports. Never "Speaker X disagrees with Y" — instead "Y is wrong" with `speakerId: X`. Every statement passes the "flashcard test" (understandable in complete isolation).
-- **Speaker attribution**: Regex-based detection identifies named speakers (Alice:, Bob said:), roles (Interviewer:, Host:), and unnamed speakers (Speaker_A, Speaker_B). Each statement gets a `speakerId` and nodes show colored speaker badges.
-- **Multi-strategy JSON extraction**: The parser tries direct parse → markdown fence → brace matching, in that order. Real LLM outputs vary wildly.
-- **Zod as the contract**: `AnalysisResultSchema` defines the exact shape the LLM must return. Malformed responses fail validation and surface as user-facing errors instead of crashing.
-- **dagre for deterministic layout**: A layered top-to-bottom graph layout (`rankdir: "TB"`) with configurable spacing.
-- **Custom ReactFlow node/edge types**: `StatementNode` shows speaker badge, fact-check difficulty bar, and fallacy/cycle badges. `ArgumentEdge` applies a purple glow + dash animation to cycle edges.
-- **Catppuccin Mocha dark theme**: Consistent color palette throughout.
-- **API key in localStorage**: Persisted across sessions via `useLocalStorage`.
-
-### Design philosophy: minimal surface, maximal depth
-
-We follow a **Figma-like approach to UI complexity**: the default view should feel almost barren — just the graph and a subtle input panel. Everything else lives behind progressive disclosure:
-
-- **Click a node** → a slide-out sidebar reveals fallacies, cycles, relations, speaker, and fact-check difficulty — then disappears when you click away
-- **Errors** → inline notifications that can be dismissed, not persistent banners
-- **Presets** → tucked into a dropdown that pre-fills the text area, never crowding the main view
-- **Controls & minimap** → ReactFlow's built-in overlays, unobtrusive by default
-- **Progress indicator** → live stage tracker with statement/relation counts, replaces the old spinner, auto-dismisses
-
-The rule: **every feature must earn its pixels**. A new user should see a graph and one clear call to action — nothing else.
+**Each step fails independently** — partial results are always surfaced.
 
 ### Project structure
 
 ```
 src/
-├── App.tsx                              # Orchestrator — state, handlers, layout
-├── api.ts                               # Legacy wrapper + pipeline exports
-├── pipeline.ts                          # Multi-step orchestrator (preprocess → extract → analyze → score)
-├── streaming.ts                         # SSE streaming client with reconnect + backoff
-├── bufferedJsonExtractor.ts             # Incremental JSON parser (partial → wait, malformed → error)
-├── prompts.ts                           # All system prompts (legacy + step 1/2/3)
-├── speakerDetection.ts                  # Regex-based speaker detection + text segmentation
-├── textChunking.ts                      # Token estimation + sentence-boundary chunking
-├── types.ts                             # Zod schemas, TS types, color helpers, constants
-├── presets.ts                           # Four demo arguments (deductive, multi-speaker, circular, fallacious)
-├── index.css                            # Tailwind + custom scrollbar + ReactFlow overrides
-├── main.tsx                             # Entry point
-├── components/
-│   ├── GraphCanvas.tsx                   # ReactFlow + dagre layout (accepts partial results)
-│   ├── InputPanel.tsx                    # API key, preset selector, text area, submit
-│   ├── StatementNode.tsx                 # Custom node with speaker badge, difficulty bar, badges
-│   ├── ArgumentEdge.tsx                  # Custom edge with cycle glow + animation
-│   ├── DetailSidebar.tsx                 # Right sidebar (statement detail, fallacies, cycles, speaker)
-│   └── PipelineProgress.tsx              # Live progress indicator during pipeline execution
-└── hooks/
-    └── useLocalStorage.ts                # Generic localStorage hook
+├── worker.ts                             # Worker — HTTP routing + static assets
+├── do/
+│   ├── pipeline.ts                       # Durable Object — SSE handler, orchestrates pipeline
+│   ├── pipeline-logic.ts                 # Effect-based pipeline functions + post-processor
+│   ├── ai-client.ts                      # AI SDK + Cloudflare AI Gateway wrapper
+│   ├── pipeline.test.ts                  # Unit tests (mock AI)
+│   └── pipeline-e2e.test.ts              # E2E tests (real AI Gateway calls)
+├── shared/
+│   ├── types.ts                          # Plain TS interfaces (NO effect/zod imports!)
+│   ├── schemas.ts                        # effect/Schema runtime validation (DO-only)
+│   ├── prompts.ts                        # System prompts (⚠️ do not edit without approval)
+│   ├── speaker-detection.ts              # Regex-based speaker detection
+│   ├── text-chunking.ts                  # Token estimation + sentence-boundary chunking
+│   ├── json-extractor.ts                 # Incremental JSON parser (NDJSON + streaming)
+│   └── id-generator.ts                   # Cross-runtime UUID generation
+└── client/
+    ├── App.tsx                            # Orchestrator — state, EventSource SSE
+    ├── components/
+    │   ├── GraphCanvas.tsx                # ReactFlow + dagre
+    │   ├── InputPanel.tsx                 # Presets, text area, submit
+    │   ├── StatementNode.tsx              # Custom node
+    │   ├── ArgumentEdge.tsx               # Custom edge
+    │   ├── DetailSidebar.tsx              # Statement details sidebar
+    │   └── PipelineProgress.tsx           # Live progress
+    ├── presets.ts                         # Demo arguments
+    ├── hooks/useLocalStorage.ts           # Theme persistence
+    └── main.tsx                           # Entry point
 ```
-
-## Limitations & Known Issues
-
-> ⚠️ **This is an early-stage product.** Expect rough edges.
-
-- **No retry logic** — transient API failures (rate limits, 5xx) are not retried in streaming mode
-- **4096 token cap** — large arguments may be truncated by `max_tokens`. Chunking exists but is basic.
-- **dagre is deprecated** — should migrate to `@dagrejs/dagre` (the maintained fork)
-- **No tests** — zero test framework coverage. E2E verification scripts exist in `scripts/` but no unit test suite.
-- **No React error boundary** — a rendering error in one component can take down the whole app
-- **API key in browser** — the key is sent directly from the client to DeepSeek. A proxy backend is planned.
-- **Type assertion in StatementNode** — `data as unknown as StatementNodeData` is a workaround
-
-## Roadmap
-
-- [ ] **Backend migration** — proxy API key, add user history, sharing, accounts
-- [ ] **Improved processing pipeline** — chunking for large inputs, streaming responses
-- [ ] **Live transcript input** — feed text from live audio transcripts for real-time analysis
-- [ ] **Fact-check integration** — hook into [Brave's LLM Context API](https://brave.com/search/api/) for actual fact verification
-- [ ] **UI/UX refinement** — polish the graph interaction, mobile experience, accessibility
-- [ ] **Migrate to `@dagrejs/dagre`** — replace deprecated dagre with the maintained fork
-- [ ] **Add tests** — at minimum for JSON extraction, Zod validation, speaker detection, and chunking
-- [ ] **Add React error boundary** — graceful failure instead of white screen
-- [ ] **Retry with backoff** — handle rate limits and transient errors
 
 ## Running tests
 
 ```bash
-npx tsx scripts/verify-e2e.ts              # Unit tests (speaker detection, chunking, JSON parsing, types)
-npx tsx scripts/verify-pipeline-e2e.ts     # Full pipeline E2E (requires .api-key file)
+# Unit tests (no API key needed)
+npx tsx src/shared/schemas.test.ts       # 16 tests — effect/Schema validation
+npx tsx src/shared/utilities.test.ts     # 47 tests — speaker, chunking, JSON, ID gen
+npx tsx src/do/pipeline.test.ts          # 33 tests — pipeline logic with mock AI
+
+# E2E tests (requires CF_AIG_TOKEN — calls real DeepSeek)
+npx tsx src/do/pipeline-e2e.test.ts      # 19 tests — real token streaming + all 3 steps
 ```
+
+## Limitations
+
+- **DO re-processes on reconnect** — no result caching yet
+- **Speaker detection requires multi-line input** — speakers must be separated by newlines
+- **Step 2 is non-streaming** — relations appear all at once, not progressively
+- **dagre is deprecated** — should migrate to `@dagrejs/dagre`
+- **No user accounts/history** — each analysis is ephemeral
 
 ## Contributing
 
 See [AGENTS.md](./AGENTS.md) for AI coding assistant instructions.
 
 ### Quick guidelines
-1. **Don't edit the system prompts in `src/prompts.ts` without careful thought** — they're the core contract with the LLM
-2. Keep the Zod schemas (`src/types.ts`) in sync with any prompt changes
-3. Test JSON extraction with real LLM outputs — they're messier than you expect
-4. Prefer the Catppuccin Mocha palette for UI changes
-5. Follow the design philosophy: hide complexity, the graph is the hero
+1. **Don't edit the system prompts in `src/shared/prompts.ts`** without approval
+2. **Never import effect or heavy libraries into `src/shared/types.ts`** — it causes white screens in the client
+3. Keep `src/shared/schemas.ts` in sync with any prompt changes
+4. Add E2E tests with real API calls for any pipeline changes
+5. Prefer the Catppuccin Mocha palette for UI changes
+6. Follow the design philosophy: hide complexity, the graph is the hero
 
 ## License
 
