@@ -114,33 +114,52 @@ export function InputPanel({
         }`}>
           Presets
         </div>
-        <div className="space-y-1">
-          <button
-            type="button"
-            onClick={() => { onPresetSelect(""); onInputTextChange(""); }}
-            className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition-colors cursor-pointer ${
-              !selectedPreset
-                ? isLight ? "bg-[#e0e7ff] text-[#4338ca] font-medium" : "bg-[#1e1b4b] text-[#a5b4fc] font-medium"
-                : isLight ? "hover:bg-[#f4f4f5] text-[#71717a]" : "hover:bg-[#27272a] text-[#a1a1aa]"
+        {isMobileInput ? (
+          <select
+            value={selectedPreset}
+            onChange={handlePresetChange}
+            className={`w-full rounded-md border px-3 py-2 text-xs transition-colors focus:outline-none focus:ring-1 cursor-pointer ${
+              isLight
+                ? "bg-[#f8f9fa] border-[#e4e4e7] text-[#18181b] focus:ring-[#2563eb]"
+                : "bg-[#09090b] border-[#3f3f46] text-[#f4f4f5] focus:ring-[#60a5fa]"
             }`}
           >
-            Custom Input
-          </button>
-          {PRESETS.map((p) => (
+            <option value="">Custom Input</option>
+            {PRESETS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="space-y-1">
             <button
-              key={p.id}
               type="button"
-              onClick={() => { onPresetSelect(p.id); onInputTextChange(p.text); }}
+              onClick={() => { onPresetSelect(""); onInputTextChange(""); }}
               className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition-colors cursor-pointer ${
-                selectedPreset === p.id
+                !selectedPreset
                   ? isLight ? "bg-[#e0e7ff] text-[#4338ca] font-medium" : "bg-[#1e1b4b] text-[#a5b4fc] font-medium"
                   : isLight ? "hover:bg-[#f4f4f5] text-[#71717a]" : "hover:bg-[#27272a] text-[#a1a1aa]"
               }`}
             >
-              {p.label}
+              Custom Input
             </button>
-          ))}
-        </div>
+            {PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => { onPresetSelect(p.id); onInputTextChange(p.text); }}
+                className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition-colors cursor-pointer ${
+                  selectedPreset === p.id
+                    ? isLight ? "bg-[#e0e7ff] text-[#4338ca] font-medium" : "bg-[#1e1b4b] text-[#a5b4fc] font-medium"
+                    : isLight ? "hover:bg-[#f4f4f5] text-[#71717a]" : "hover:bg-[#27272a] text-[#a1a1aa]"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Text area */}
         <div className={`text-xs font-medium uppercase tracking-wider ${
@@ -153,7 +172,7 @@ export function InputPanel({
           onChange={(e) => { onInputTextChange(e.target.value); onPresetSelect(""); }}
           onKeyDown={handleKeyDown}
           placeholder="Paste argument text or select a preset above..."
-          rows={12}
+          rows={isMobileInput ? 6 : 12}
           className={`w-full rounded-md border p-2.5 text-xs leading-relaxed resize-y transition-colors focus:outline-none focus:ring-1 ${
             isLight
               ? "bg-[#f8f9fa] border-[#e4e4e7] text-[#18181b] placeholder-[#a1a1aa] focus:ring-[#2563eb]"
