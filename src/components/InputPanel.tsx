@@ -83,13 +83,13 @@ export function InputPanel({
     (apiProvider === "openrouter" && !model.trim());
 
   return (
-    <div className={`flex flex-col gap-4 p-4 ${isMobileInput ? "max-h-[60vh] overflow-y-auto" : "h-full overflow-y-auto"}`}>
-      {/* Mobile drag handle + close */}
+    <div className={`flex flex-col gap-4 p-4 ${isMobileInput ? "max-h-[75vh] overflow-y-auto" : "h-full overflow-y-auto"}`}>
+      {/* Mobile drawer header with clean title & close button */}
       {isMobileInput && (
-        <div className="flex items-center justify-between -mt-0.5 mb-1">
-          <div className="flex-1 flex justify-center">
-            <div className="w-10 h-1 rounded-full bg-[var(--md-sys-color-outline-variant)]" />
-          </div>
+        <div className="flex items-center justify-between pb-2 border-b border-[var(--md-sys-color-outline-variant)] flex-shrink-0">
+          <span className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">
+            Argument Input
+          </span>
           {onClose && (
             <md-icon-button onClick={onClose} aria-label="Close input panel">
               <md-icon>close</md-icon>
@@ -98,30 +98,32 @@ export function InputPanel({
         </div>
       )}
 
-      {/* Title (desktop) — No icon before title */}
+      {/* Title (desktop) */}
       {!isMobileInput && (
-        <h1 className="text-lg font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
+        <h1 className="text-lg font-bold tracking-tight text-[var(--md-sys-color-on-surface)] flex-shrink-0">
           Argument Graph Analyzer
         </h1>
       )}
 
       {/* Settings section — desktop only */}
       {!isMobileInput && (
-        <SettingsPanel
-          apiProvider={apiProvider}
-          onApiProviderChange={onApiProviderChange}
-          apiKey={apiKey}
-          onApiKeyChange={onApiKeyChange}
-          model={model}
-          onModelChange={onModelChange}
-        />
+        <div className="flex-shrink-0">
+          <SettingsPanel
+            apiProvider={apiProvider}
+            onApiProviderChange={onApiProviderChange}
+            apiKey={apiKey}
+            onApiKeyChange={onApiKeyChange}
+            model={model}
+            onModelChange={onModelChange}
+          />
+        </div>
       )}
 
-      <md-divider></md-divider>
+      {!isMobileInput && <md-divider></md-divider>}
 
       {/* Preset selector */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
+      <div className="flex flex-col gap-1.5 flex-shrink-0">
+        <label className="text-xs font-medium text-[var(--md-sys-color-on-surface-variant)] inline-flex items-center gap-1">
           <md-icon style={{ fontSize: '16px' }}>lightbulb</md-icon>
           Example Arguments
         </label>
@@ -147,14 +149,14 @@ export function InputPanel({
       </div>
 
       {/* Text input — multiline with type="textarea" */}
-      <div className="flex flex-col gap-1.5 flex-1 min-h-0">
-        <label className="text-xs font-medium text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
+      <div className="flex flex-col gap-1.5 flex-shrink-0">
+        <label className="text-xs font-medium text-[var(--md-sys-color-on-surface-variant)] inline-flex items-center gap-1">
           <md-icon style={{ fontSize: '16px' }}>edit_note</md-icon>
           Argument Text
         </label>
         <md-outlined-text-field
           type="textarea"
-          rows={6}
+          rows={isMobileInput ? 4 : 6}
           label="Paste or type your argument here..."
           value={inputText}
           oninput={(e: any) => onInputTextChange(e.target.value)}
@@ -163,27 +165,29 @@ export function InputPanel({
       </div>
 
       {/* Submit Button */}
-      <md-filled-button
-        disabled={isSubmitDisabled}
-        onClick={onSubmit}
-        style={{ width: "100%" }}
-      >
-        {isLoading ? (
-          <>
-            <md-circular-progress slot="icon" indeterminate style={{ width: "18px", height: "18px" }}></md-circular-progress>
-            Analyzing...
-          </>
-        ) : (
-          <>
-            <md-icon slot="icon">analytics</md-icon>
-            Analyze Argument
-          </>
-        )}
-      </md-filled-button>
+      <div className="w-full flex-shrink-0 pt-1">
+        <md-filled-button
+          disabled={isSubmitDisabled}
+          onClick={onSubmit}
+          style={{ width: "100%" }}
+        >
+          {isLoading ? (
+            <>
+              <md-circular-progress slot="icon" indeterminate style={{ width: "18px", height: "18px" }}></md-circular-progress>
+              Analyzing...
+            </>
+          ) : (
+            <>
+              <md-icon slot="icon">analytics</md-icon>
+              Analyze Argument
+            </>
+          )}
+        </md-filled-button>
+      </div>
 
       {/* Missing API key hint */}
       {!isLoading && inputText.trim() && (!apiKey.trim() || (apiProvider === "openrouter" && !model.trim())) && (
-        <div className="flex items-center justify-center gap-1.5 p-2 rounded-lg bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] text-xs text-center">
+        <div className="flex-shrink-0 flex items-center justify-center gap-1.5 p-2.5 rounded-lg bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] text-xs text-center">
           <md-icon style={{ fontSize: '18px' }}>warning</md-icon>
           <span>API key required.</span>
           {onOpenSettings ? (
@@ -201,13 +205,13 @@ export function InputPanel({
 
       {/* Time & Accumulated Tokens info bar */}
       {(isLoading || pipelineProgress) && (
-        <div className="flex items-center justify-center gap-3 py-2 px-3 rounded-lg bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] text-xs font-mono">
-          <span className="flex items-center gap-1 text-[var(--md-sys-color-on-surface-variant)]">
+        <div className="flex-shrink-0 flex items-center justify-center gap-3 py-2 px-3 rounded-lg bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] text-xs font-mono">
+          <span className="inline-flex items-center gap-1 text-[var(--md-sys-color-on-surface-variant)]">
             <md-icon style={{ fontSize: '14px' }}>timer</md-icon>
             <span className="text-[var(--md-sys-color-on-surface)] font-semibold">{displayTime}s</span>
           </span>
           <span className="text-[var(--md-sys-color-outline)]">|</span>
-          <span className="flex items-center gap-1 text-[var(--md-sys-color-on-surface-variant)]">
+          <span className="inline-flex items-center gap-1 text-[var(--md-sys-color-on-surface-variant)]">
             <md-icon style={{ fontSize: '14px' }}>token</md-icon>
             <span className="text-[var(--md-sys-color-primary)] font-semibold">~{(pipelineProgress?.totalTokens ?? 0).toLocaleString()}</span> tokens
           </span>

@@ -202,9 +202,9 @@ export default function App() {
       {/* Mobile Header Bar */}
       <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[var(--md-sys-color-surface-container)] border-b border-[var(--md-sys-color-outline-variant)] z-30 flex-shrink-0 gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-base font-bold text-[var(--md-sys-color-on-surface)] truncate">Argument Graph</span>
+          <span className="text-sm font-bold text-[var(--md-sys-color-on-surface)] truncate">Argument Graph</span>
           {pipelineProgress && (
-            <span className="px-2 py-0.5 text-[10px] font-mono rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-primary)] font-semibold flex-shrink-0">
+            <span className="inline-flex items-center leading-none px-2 py-1 text-[10px] font-mono rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-primary)] font-semibold flex-shrink-0">
               {pipelineProgress.stage}
             </span>
           )}
@@ -221,14 +221,14 @@ export default function App() {
         </md-icon-button>
       </div>
 
-      {/* Mobile Input Drawer */}
+      {/* Mobile Input Drawer — slides down from top */}
       {mobileInputOpen && (
         <>
           <div
             className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-xs"
             onClick={() => setMobileInputOpen(false)}
           />
-          <div className="fixed top-0 left-0 right-0 z-[45] max-h-[60vh] bg-[var(--md-sys-color-surface-container)] border-b border-[var(--md-sys-color-outline-variant)] rounded-b-2xl shadow-2xl overflow-y-auto animate-slide-down lg:hidden">
+          <div className="fixed top-0 left-0 right-0 z-50 bg-[var(--md-sys-color-surface-container)] border-b border-[var(--md-sys-color-outline-variant)] rounded-b-2xl shadow-2xl overflow-hidden animate-slide-down lg:hidden">
             <InputPanel
               inputText={inputText}
               onInputTextChange={setInputText}
@@ -325,15 +325,15 @@ export default function App() {
 
       {/* Center Graph Canvas */}
       <div className="flex-1 min-w-0 relative h-full w-full">
-        {/* Floating input trigger — mobile only with ample padding and min-width */}
+        {/* Floating input trigger — compact, sleek pill button with perfect vertical alignment */}
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 lg:hidden">
           <button
             onClick={() => setMobileInputOpen(true)}
-            className="px-5 py-2.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold text-sm hover:opacity-90 transition-all cursor-pointer shadow-lg flex items-center gap-2 whitespace-nowrap min-w-[110px] justify-center"
+            className="px-3.5 py-1.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-semibold text-xs transition-all cursor-pointer shadow-md inline-flex items-center justify-center gap-1.5 leading-none border border-[var(--md-sys-color-primary)]"
             aria-label="Open input panel"
           >
-            <span className="material-symbols-outlined text-lg leading-none">keyboard_arrow_down</span>
-            <span>Input</span>
+            <span className="material-symbols-outlined text-base leading-none block -mt-[1px]">keyboard_arrow_down</span>
+            <span className="leading-none block">Input</span>
           </button>
         </div>
 
