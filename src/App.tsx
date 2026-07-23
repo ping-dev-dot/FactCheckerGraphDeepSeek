@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
-import { Sun, Moon, SlidersHorizontal, Edit3, X, Network, Terminal } from "lucide-react";
+import { Sun, Moon, SlidersHorizontal, ChevronDown, X, Network, Terminal } from "lucide-react";
 import { InputPanel } from "./components/InputPanel";
 import { GraphCanvas } from "./components/GraphCanvas";
 import { DetailSidebar } from "./components/DetailSidebar";
@@ -396,16 +396,18 @@ export default function App() {
         {/* Floating input trigger — mobile only */}
         <button
           onClick={() => setMobileInputOpen(true)}
-          className={`absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3.5 py-1.5 
-                     rounded-md text-white font-medium text-xs
-                     transition-colors cursor-pointer shadow-sm
+          className={`absolute top-3 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 
+                     rounded-full font-semibold text-xs
+                     transition-colors cursor-pointer shadow-md
                      lg:hidden flex items-center gap-1.5 ${
-                       isLight ? "bg-[#2563eb] hover:bg-[#1d4ed8]" : "bg-[#3b82f6] hover:bg-[#2563eb]"
+                       isLight
+                         ? "bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
+                         : "bg-[#60a5fa] text-[#09090b] hover:bg-[#3b82f6]"
                      }`}
           aria-label="Open input panel"
         >
-          <Edit3 className="w-3.5 h-3.5" />
-          <span>Input Panel</span>
+          <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
+          <span>Input</span>
         </button>
 
         {displayResult && displayResult.statements && displayResult.statements.length > 0 ? (
