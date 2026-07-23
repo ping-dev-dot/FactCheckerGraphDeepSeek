@@ -14,7 +14,7 @@ import {
 } from "@xyflow/react";
 import dagre from "dagre";
 import { Focus } from "lucide-react";
-import type { AnalysisResult, PartialAnalysisResult, ThemeMode } from "../types";
+import type { AnalysisResult, PartialAnalysisResult, ThemeMode } from "../../shared/types";
 import { StatementNode } from "./StatementNode";
 import { ArgumentEdge } from "./ArgumentEdge";
 import type { StatementNodeData } from "./StatementNode";

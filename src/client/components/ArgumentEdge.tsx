@@ -4,7 +4,7 @@ import {
   getBezierPath,
   type EdgeProps,
 } from "@xyflow/react";
-import type { ThemeMode } from "../types";
+import type { ThemeMode } from "../../shared/types";
 
 export type CycleEdgeData = {
   isCycle: boolean;

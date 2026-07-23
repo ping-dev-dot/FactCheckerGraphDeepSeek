@@ -1,5 +1,5 @@
 import { Loader2, CheckCircle2, AlertTriangle, RotateCcw, Eye, Terminal } from "lucide-react";
-import type { PipelineProgress, ThemeMode } from "../types";
+import type { PipelineProgress, ThemeMode } from "../../shared/types";
 
 interface PipelineProgressProps {
   progress: PipelineProgress | null;

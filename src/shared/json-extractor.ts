@@ -1,62 +1,48 @@
 /**
  * Incremental JSON buffer for streaming API responses.
- * Tries to parse complete JSON objects from an accumulating text stream,
- * distinguishing between "incomplete" (keep waiting) and "malformed" (real error).
+ * Ported from bufferedJsonExtractor.ts — uses effect/Schema instead of Zod.
  */
 
-import type { ZodSchema } from "zod";
+import { Schema } from "effect";
+
+type AnySchema = Schema.Schema<any, any, never>;
 
 function tryExtractJson(raw: string): unknown | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
 
   // Strategy 1: direct parse
-  try {
-    return JSON.parse(trimmed);
-  } catch { /* fall through */ }
+  try { return JSON.parse(trimmed); } catch { /* fall through */ }
 
   // Strategy 2: markdown fence
   const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
-    try {
-      return JSON.parse(fenceMatch[1].trim());
-    } catch { /* fall through */ }
+    try { return JSON.parse(fenceMatch[1].trim()); } catch { /* fall through */ }
   }
 
   // Strategy 3: brace match
   const braceMatch = trimmed.match(/\{[\s\S]*\}/);
   if (braceMatch) {
-    try {
-      return JSON.parse(braceMatch[0].trim());
-    } catch { /* fall through */ }
+    try { return JSON.parse(braceMatch[0].trim()); } catch { /* fall through */ }
   }
 
-  // Strategy 4: array match (for statement arrays)
+  // Strategy 4: array match
   const arrayMatch = trimmed.match(/\[[\s\S]*\]/);
   if (arrayMatch) {
-    try {
-      return JSON.parse(arrayMatch[0].trim());
-    } catch { /* fall through */ }
+    try { return JSON.parse(arrayMatch[0].trim()); } catch { /* fall through */ }
   }
 
   return null;
 }
 
 export interface JsonBuffer<T> {
-  /** Push a new chunk of text. Returns parsed result if complete, null if still waiting. */
   push(chunk: string): { parsed: T | null; raw: string };
-  /** Final attempt to parse after stream ends. Returns parsed result or throws. */
   flush(): T;
-  /** Get the current raw buffer (for progress inspection). */
   getBuffer(): string;
 }
 
-/**
- * Creates a buffered JSON extractor that incrementally parses from a streaming text source.
- * For array output (statement lists), it also supports newline-delimited JSON objects.
- */
 export function createJsonBuffer<T>(
-  schema: ZodSchema<T>,
+  schema: AnySchema,
   mode: "single" | "array" = "single"
 ): JsonBuffer<T> {
   let buffer = "";
@@ -67,10 +53,8 @@ export function createJsonBuffer<T>(
     const result = tryExtractJson(raw);
     if (result === null) return null;
 
-    const parsed = schema.safeParse(result);
-    if (parsed.success) {
-      return parsed.data;
-    }
+    const parsed = Schema.decodeUnknownEither(schema)(result);
+    if (parsed._tag === "Right") return parsed.right as T;
     return null;
   }
 
@@ -78,9 +62,7 @@ export function createJsonBuffer<T>(
     buffer += chunk;
 
     if (mode === "array") {
-      // Newline-delimited JSON: try parsing individual lines as they complete
       const lines = buffer.split("\n");
-      // Keep incomplete last line
       const complete = lines.slice(0, -1);
       buffer = lines[lines.length - 1] ?? "";
 
@@ -90,37 +72,30 @@ export function createJsonBuffer<T>(
         try {
           accumulatedItems.push(JSON.parse(trimmed));
         } catch {
-          // Put it back in buffer — might be partial
           buffer = trimmed + "\n" + buffer;
         }
       }
 
       if (accumulatedItems.length > lastParsedCount) {
         lastParsedCount = accumulatedItems.length;
-        const result = schema.safeParse(accumulatedItems);
-        if (result.success) {
-          return { parsed: result.data, raw: buffer };
-        }
+        const parsed = Schema.decodeUnknownEither(schema)(accumulatedItems);
+        if (parsed._tag === "Right") return { parsed: parsed.right as T, raw: buffer };
       }
     }
 
     // Try full parse
     const result = tryParse(buffer);
-    if (result !== null) {
-      return { parsed: result, raw: buffer };
-    }
+    if (result !== null) return { parsed: result, raw: buffer };
 
     return { parsed: null, raw: buffer };
   }
 
   function flush(): T {
-    // For array mode: try accumulated items
     if (mode === "array" && accumulatedItems.length > 0) {
-      const result = schema.safeParse(accumulatedItems);
-      if (result.success) return result.data;
+      const parsed = Schema.decodeUnknownEither(schema)(accumulatedItems);
+      if (parsed._tag === "Right") return parsed.right as T;
     }
 
-    // Final parse attempt on full buffer
     const result = tryParse(buffer);
     if (result !== null) return result;
 

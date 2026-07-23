@@ -1,32 +1,25 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
-import { Sun, Moon, SlidersHorizontal, ChevronDown, X, Network, Terminal } from "lucide-react";
+import { Sun, Moon, ChevronDown, X, Network, Terminal } from "lucide-react";
 import { InputPanel } from "./components/InputPanel";
 import { GraphCanvas } from "./components/GraphCanvas";
 import { DetailSidebar } from "./components/DetailSidebar";
 import { PipelineProgress } from "./components/PipelineProgress";
 import { DebugLogConsole } from "./components/DebugLogConsole";
-import { SettingsPanel } from "./components/SettingsPanel";
-import { runAnalysisPipeline, PipelineStepError } from "./api";
 import { useLocalStorage } from "./hooks/useLocalStorage";
+import { generateId } from "../shared/id-generator";
 import type {
   AnalysisResult,
-  ApiProvider,
-  ApiSettings,
   AppStatus,
   LogEntry,
   PartialAnalysisResult,
   PipelineProgress as PipelineProgressType,
   Statement,
   ThemeMode,
-} from "./types";
+} from "../shared/types";
 
 export default function App() {
   const [themeMode, setThemeMode] = useLocalStorage<ThemeMode>("theme-mode", "dark");
-  const [apiProvider, setApiProvider] = useLocalStorage<ApiProvider>("api-provider", "deepseek");
-  const [deepseekApiKey, setDeepseekApiKey] = useLocalStorage<string>("deepseek-api-key", "");
-  const [openrouterApiKey, setOpenrouterApiKey] = useLocalStorage<string>("openrouter-api-key", "");
-  const [openrouterModel, setOpenrouterModel] = useLocalStorage<string>("openrouter-model", "deepseek/deepseek-chat");
 
   const [inputText, setInputText] = useState("");
   const [selectedPreset, setSelectedPreset] = useState("");
@@ -41,9 +34,7 @@ export default function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showLogs, setShowLogs] = useState(false);
 
-  // Mobile overlay states — split input and settings
   const [mobileInputOpen, setMobileInputOpen] = useState(false);
-  const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
 
   const isLight = themeMode === "light";
 
@@ -51,38 +42,8 @@ export default function App() {
     setLogs((prev) => [...prev, entry]);
   }, []);
 
-  const clearLogs = useCallback(() => {
-    setLogs([]);
-  }, []);
+  const clearLogs = useCallback(() => setLogs([]), []);
 
-  const currentApiKey = apiProvider === "openrouter" ? openrouterApiKey : deepseekApiKey;
-  const currentModel = apiProvider === "openrouter" ? openrouterModel : "deepseek-chat";
-
-  const handleApiKeyChange = (key: string) => {
-    if (apiProvider === "openrouter") {
-      setOpenrouterApiKey(key);
-    } else {
-      setDeepseekApiKey(key);
-    }
-  };
-
-  const apiSettings: ApiSettings = useMemo(
-    () => ({
-      provider: apiProvider,
-      apiKey: currentApiKey,
-      model: currentModel,
-    }),
-    [apiProvider, currentApiKey, currentModel]
-  );
-
-  // Cache for retry: keep text/apiSettings and step 1 results across retries
-  const retryCache = useRef<{
-    text: string;
-    apiSettings: ApiSettings;
-    statements?: Statement[];
-  } | null>(null);
-
-  // Determine display result: full result takes priority, partial as fallback
   const displayResult: AnalysisResult | PartialAnalysisResult | null =
     result ?? partialResult;
 
@@ -91,10 +52,11 @@ export default function App() {
       ? displayResult.statements.find((s) => s.id === selectedNodeId) ?? null
       : null;
 
+  const isRunning = status === "running" || status === "partial";
+
+  // ── Submit: POST /api/analyze, then listen via SSE ──
   const handleSubmit = useCallback(async () => {
-    // Close all mobile overlays on submit
     setMobileInputOpen(false);
-    setMobileSettingsOpen(false);
     setStatus("running");
     setErrorMessage("");
     setResult(null);
@@ -102,89 +64,117 @@ export default function App() {
     setSelectedNodeId(null);
     setPipelineProgress({ stage: "preprocessing", message: "Starting pipeline...", statementsFound: 0, totalSteps: 3, currentStep: 0 });
 
-    retryCache.current = { text: inputText, apiSettings };
-
     try {
-      const finalResult = await runAnalysisPipeline(
-        inputText,
-        apiSettings,
-        // onProgress
-        (progress) => {
-          setPipelineProgress(progress);
-          if (progress.stage === "extracting") {
-            setStatus("running");
-          }
-        },
-        // onStatements
-        (statements) => {
-          setPartialResult((prev) => ({
-            ...prev,
-            statements,
-          }));
-          setStatus("partial");
-        },
-        // onPartialResult
-        (partial) => {
-          setPartialResult(partial);
-          setStatus("partial");
-        },
-        // onLog
-        addLog
-      );
-      setResult(finalResult);
-      setStatus("success");
-      setPipelineProgress((prev) => (prev ? { ...prev, stage: "complete" } : prev));
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "An unknown error occurred";
-      setErrorMessage(message);
+      // Create analysis
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: inputText }),
+      });
 
-      if (err instanceof PipelineStepError) {
-        // Partial results available — keep showing what we have
-        setPartialResult(err.partialResult);
-        setStatus("partial");
-      } else if (partialResult?.statements?.length) {
-        // Step 1 succeeded but step 2/3 threw non-pipeline error
-        setStatus("partial");
-      } else {
-        setStatus("error");
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to start analysis");
       }
-    }
-  }, [inputText, apiSettings, partialResult, addLog]);
 
-  // Retry from step 2 (cached step 1 results)
-  const handleRetry = useCallback(async () => {
-    const cache = retryCache.current;
-    if (!cache?.statements?.length || !cache.apiSettings.apiKey) return;
+      const { analysisId } = await res.json();
+      addLog({
+        id: generateId(),
+        timestamp: new Date().toISOString(),
+        level: "info",
+        message: `Analysis created: ${analysisId}`,
+      });
 
-    setStatus("running");
-    setErrorMessage("");
-    setPipelineProgress({ stage: "analyzing_relations", message: "Retrying relation analysis...", statementsFound: cache.statements.length, totalSteps: 3, currentStep: 2 });
+      // Listen to SSE stream
+      const eventSource = new EventSource(`/api/analyze/${analysisId}/stream`);
 
-    try {
-      const finalResult = await runAnalysisPipeline(
-        cache.text,
-        cache.apiSettings,
-        (progress) => setPipelineProgress(progress),
-        (statements) => {
-          setPartialResult((prev) => ({ ...prev, statements }));
-        },
-        (partial) => {
-          setPartialResult(partial);
-          setStatus("partial");
-        },
-        addLog
-      );
-      setResult(finalResult);
-      setStatus("success");
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          switch (data.type) {
+            case "step:start":
+              setPipelineProgress({
+                stage: data.step === 0 ? "preprocessing"
+                  : data.step === 1 ? "extracting"
+                  : data.step === 2 ? "analyzing_relations"
+                  : "scoring",
+                message: data.message,
+                statementsFound: data.statements?.length ?? 0,
+                totalSteps: 4,
+                currentStep: data.step,
+              });
+              break;
+
+            case "step:complete":
+              if (data.step === 1 && data.statements) {
+                setPartialResult((prev) => ({ ...prev, statements: data.statements }));
+                setStatus("partial");
+              }
+              if (data.step === 2) {
+                setPartialResult((prev) => ({
+                  ...prev,
+                  relations: data.relations,
+                  fallacies: data.fallacies,
+                  cycles: data.cycles,
+                }));
+              }
+              if (data.step === 3 && data.statements) {
+                setPartialResult((prev) => ({ ...prev, statements: data.statements }));
+              }
+              break;
+
+            case "statements:update":
+              if (data.statements) {
+                setPartialResult((prev) => ({ ...prev, statements: data.statements }));
+                setStatus("partial");
+                setPipelineProgress((prev) => prev ? {
+                  ...prev,
+                  statementsFound: data.statements.length,
+                } : prev);
+              }
+              break;
+
+            case "pipeline:complete":
+              if (data.result) {
+                setResult(data.result);
+                setStatus("success");
+                setPipelineProgress((prev) => prev ? { ...prev, stage: "complete" } : prev);
+              }
+              eventSource.close();
+              break;
+
+            case "step:error":
+              setErrorMessage(data.message);
+              break;
+
+            case "error":
+              setErrorMessage(data.message);
+              if (data.partial) setStatus("partial");
+              else setStatus("error");
+              eventSource.close();
+              break;
+          }
+        } catch {
+          // Skip unparseable events
+        }
+      };
+
+      eventSource.onerror = () => {
+        eventSource.close();
+        if (status !== "success") {
+          setErrorMessage("Connection lost. The analysis may still be running.");
+          if (partialResult?.statements?.length) setStatus("partial");
+          else setStatus("error");
+        }
+      };
     } catch (err) {
       const message = err instanceof Error ? err.message : "An unknown error occurred";
       setErrorMessage(message);
-      setStatus("partial");
+      setStatus("error");
     }
-  }, [addLog]);
+  }, [inputText, partialResult, status, addLog]);
 
-  // View partial results only (dismiss error, show statements)
   const handleViewPartial = useCallback(() => {
     setErrorMessage("");
     setStatus("partial");
@@ -194,21 +184,16 @@ export default function App() {
     setSelectedNodeId((prev) => (prev === nodeId ? null : nodeId));
   }, []);
 
-  // Close input drawer on canvas click
   const handleCanvasClick = useCallback(() => {
     setSelectedNodeId(null);
     setMobileInputOpen(false);
   }, []);
 
-  const isRunning = status === "running" || status === "partial";
-
   return (
     <div className={`h-screen w-screen flex flex-col lg:flex-row overflow-hidden relative font-sans transition-colors ${
       isLight ? "bg-[#f8f9fa] text-[#18181b]" : "bg-[#09090b] text-[#f4f4f5]"
     }`}>
-      {/* ================================================================ */}
-      {/* Mobile Header Bar (visible on < lg)                              */}
-      {/* ================================================================ */}
+      {/* Mobile Header */}
       <div className={`lg:hidden flex items-center justify-between px-3 py-2 border-b z-30 flex-shrink-0 gap-2 ${
         isLight ? "bg-[#ffffff] border-[#e4e4e7]" : "bg-[#18181b] border-[#3f3f46]"
       }`}>
@@ -239,29 +224,13 @@ export default function App() {
           )}
         </div>
 
-        <button
-          onClick={() => {
-            setMobileSettingsOpen((prev) => !prev);
-            setMobileInputOpen(false);
-          }}
-          className={`px-2.5 py-1 text-xs rounded border transition-colors flex items-center gap-1.5 cursor-pointer font-medium flex-shrink-0 ${
-            isLight ? "bg-[#ffffff] border-[#e4e4e7] text-[#18181b] hover:bg-[#f4f4f5]" : "bg-[#27272a] border-[#3f3f46] text-[#f4f4f5] hover:bg-[#3f3f46]"
-          }`}
-        >
-          {mobileSettingsOpen ? <X className="w-3.5 h-3.5" /> : <SlidersHorizontal className="w-3.5 h-3.5" />}
-          <span>{mobileSettingsOpen ? "Close" : "Settings"}</span>
-        </button>
+        <div className="w-8" />
       </div>
 
-      {/* ================================================================ */}
-      {/* Mobile Input Drawer — slides down from top                        */}
-      {/* ================================================================ */}
+      {/* Mobile Input Drawer */}
       {mobileInputOpen && (
         <>
-          <div
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-            onClick={() => setMobileInputOpen(false)}
-          />
+          <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileInputOpen(false)} />
           <div className={`fixed top-0 left-0 right-0 z-[45] max-h-[60vh] border-b rounded-b-md shadow-xl overflow-y-auto animate-slide-down lg:hidden ${
             isLight ? "bg-[#ffffff] border-[#e4e4e7]" : "bg-[#18181b] border-[#3f3f46]"
           }`}>
@@ -270,12 +239,6 @@ export default function App() {
               onInputTextChange={setInputText}
               selectedPreset={selectedPreset}
               onPresetSelect={setSelectedPreset}
-              apiProvider={apiProvider}
-              onApiProviderChange={setApiProvider}
-              apiKey={currentApiKey}
-              onApiKeyChange={handleApiKeyChange}
-              model={openrouterModel}
-              onModelChange={setOpenrouterModel}
               onSubmit={handleSubmit}
               isLoading={isRunning}
               pipelineProgress={pipelineProgress}
@@ -283,57 +246,12 @@ export default function App() {
               themeMode={themeMode}
               onThemeModeChange={setThemeMode}
               onClose={() => setMobileInputOpen(false)}
-              onOpenSettings={() => {
-                setMobileInputOpen(false);
-                setMobileSettingsOpen(true);
-              }}
             />
           </div>
         </>
       )}
 
-      {/* ================================================================ */}
-      {/* Mobile Settings Overlay                                          */}
-      {/* ================================================================ */}
-      {mobileSettingsOpen && (
-        <div className={`fixed inset-0 z-50 flex flex-col lg:hidden ${
-          isLight ? "bg-[#f8f9fa]" : "bg-[#09090b]"
-        }`}>
-          <div className={`flex items-center justify-between px-4 py-2.5 border-b flex-shrink-0 ${
-            isLight ? "bg-[#ffffff] border-[#e4e4e7]" : "bg-[#18181b] border-[#3f3f46]"
-          }`}>
-            <h2 className={`text-xs font-semibold uppercase tracking-wider ${
-              isLight ? "text-[#18181b]" : "text-[#f4f4f5]"
-            }`}>Settings</h2>
-            <button
-              onClick={() => setMobileSettingsOpen(false)}
-              className={`transition-colors text-base leading-none cursor-pointer p-1 ${
-                isLight ? "text-[#71717a] hover:text-[#18181b]" : "text-[#a1a1aa] hover:text-[#f4f4f5]"
-              }`}
-              aria-label="Close settings"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className={`p-4 overflow-y-auto flex-1 ${
-            isLight ? "bg-[#ffffff]" : "bg-[#18181b]"
-          }`}>
-            <SettingsPanel
-              apiProvider={apiProvider}
-              onApiProviderChange={setApiProvider}
-              apiKey={currentApiKey}
-              onApiKeyChange={handleApiKeyChange}
-              model={openrouterModel}
-              onModelChange={setOpenrouterModel}
-              themeMode={themeMode}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ================================================================ */}
-      {/* Desktop Left Panel — InputPanel + Debug Logs Footer              */}
-      {/* ================================================================ */}
+      {/* Desktop Left Panel */}
       <div className={`hidden lg:flex w-[350px] flex-shrink-0 border-r flex-col h-full overflow-hidden ${
         isLight ? "bg-[#ffffff] border-[#e4e4e7]" : "bg-[#18181b] border-[#3f3f46]"
       }`}>
@@ -342,12 +260,6 @@ export default function App() {
           onInputTextChange={setInputText}
           selectedPreset={selectedPreset}
           onPresetSelect={setSelectedPreset}
-          apiProvider={apiProvider}
-          onApiProviderChange={setApiProvider}
-          apiKey={currentApiKey}
-          onApiKeyChange={handleApiKeyChange}
-          model={openrouterModel}
-          onModelChange={setOpenrouterModel}
           onSubmit={handleSubmit}
           isLoading={isRunning}
           pipelineProgress={pipelineProgress}
@@ -356,7 +268,7 @@ export default function App() {
           variant="desktop"
         />
 
-        {/* Global Debug Logs Footer */}
+        {/* Debug Logs Footer */}
         <div className={`px-4 pb-3 pt-2 flex items-center justify-between border-t ${
           isLight ? "border-[#e4e4e7] bg-[#ffffff]" : "border-[#3f3f46] bg-[#18181b]"
         }`}>
@@ -377,23 +289,17 @@ export default function App() {
             )}
           </button>
           {logs.length > 0 && (
-            <button
-              onClick={clearLogs}
-              className="text-[11px] text-[#71717a] hover:text-[#ef4444] transition-colors cursor-pointer font-medium"
-            >
+            <button onClick={clearLogs} className="text-[11px] text-[#71717a] hover:text-[#ef4444] transition-colors cursor-pointer font-medium">
               Clear
             </button>
           )}
         </div>
       </div>
 
-      {/* ================================================================ */}
-      {/* Center — graph canvas                                           */}
-      {/* ================================================================ */}
+      {/* Center — Graph Canvas */}
       <div className={`flex-1 min-w-0 relative h-full w-full ${
         isLight ? "bg-[#f8f9fa]" : "bg-[#09090b]"
       }`}>
-        {/* Floating input trigger — mobile only */}
         <button
           onClick={() => setMobileInputOpen(true)}
           className={`absolute top-3 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 
@@ -425,22 +331,9 @@ export default function App() {
               {isRunning && pipelineProgress ? (
                 <PipelineProgress
                   progress={pipelineProgress}
-                  errorMessage={
-                    status === "partial" && errorMessage ? errorMessage : undefined
-                  }
-                  isPartial={
-                    status === "partial" && !!partialResult?.statements?.length
-                  }
-                  onRetry={
-                    status === "partial" && errorMessage
-                      ? handleRetry
-                      : undefined
-                  }
-                  onViewPartial={
-                    status === "partial" && errorMessage && partialResult?.statements?.length
-                      ? handleViewPartial
-                      : undefined
-                  }
+                  errorMessage={status === "partial" && errorMessage ? errorMessage : undefined}
+                  isPartial={status === "partial" && !!partialResult?.statements?.length}
+                  onViewPartial={status === "partial" && errorMessage && partialResult?.statements?.length ? handleViewPartial : undefined}
                   logCount={logs.length}
                   showLogs={showLogs}
                   onToggleLogs={() => setShowLogs((prev) => !prev)}
@@ -461,7 +354,7 @@ export default function App() {
                   <p className={`text-xs leading-relaxed ${
                     isLight ? "text-[#71717a]" : "text-[#a1a1aa]"
                   }`}>
-                    Select an example preset or enter text on the left panel to map argument structure and evaluate fact-check difficulty.
+                    Enter argument text and click Analyze to map logical structure.
                   </p>
                 </div>
               )}
@@ -470,10 +363,7 @@ export default function App() {
         )}
       </div>
 
-
-      {/* ================================================================ */}
-      {/* Right — detail sidebar                                           */}
-      {/* ================================================================ */}
+      {/* Right — Detail Sidebar */}
       {selectedStatement && displayResult && (
         <DetailSidebar
           statement={selectedStatement}
@@ -483,9 +373,7 @@ export default function App() {
         />
       )}
 
-      {/* ================================================================ */}
-      {/* Error notification float                                         */}
-      {/* ================================================================ */}
+      {/* Error notification */}
       {status === "error" && (
         <div className={`fixed bottom-4 left-4 right-4 lg:left-auto lg:right-4 lg:w-[360px] z-50 p-3 rounded-md border shadow-lg ${
           isLight ? "bg-[#ffffff] border-[#ef4444]/40" : "bg-[#161618] border-[#ef4444]/40"
@@ -494,18 +382,13 @@ export default function App() {
           <p className={`text-xs leading-relaxed ${isLight ? "text-[#71717a]" : "text-[#a1a1aa]"}`}>
             {errorMessage}
           </p>
-          <button
-            onClick={() => setStatus("idle")}
-            className="mt-2 text-xs text-[#2563eb] hover:underline cursor-pointer font-medium"
-          >
+          <button onClick={() => setStatus("idle")} className="mt-2 text-xs text-[#2563eb] hover:underline cursor-pointer font-medium">
             Dismiss
           </button>
         </div>
       )}
 
-      {/* ================================================================ */}
-      {/* Floating Debug Log Console                                       */}
-      {/* ================================================================ */}
+      {/* Debug Log Console */}
       {showLogs && (
         <DebugLogConsole
           logs={logs}
@@ -517,5 +400,3 @@ export default function App() {
     </div>
   );
 }
-
-

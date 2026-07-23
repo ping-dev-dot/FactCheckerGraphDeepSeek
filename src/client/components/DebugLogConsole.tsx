@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Terminal, Copy, Check, Trash2, X } from "lucide-react";
-import type { LogEntry, ThemeMode } from "../types";
+import type { LogEntry, ThemeMode } from "../../shared/types";
 
 interface DebugLogConsoleProps {
   logs: LogEntry[];

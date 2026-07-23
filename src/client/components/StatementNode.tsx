@@ -1,7 +1,7 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { AlertOctagon, Repeat, ShieldAlert } from "lucide-react";
-import type { Statement, ThemeMode } from "../types";
-import { difficultyColor, FALLACY_COLOR, CYCLE_COLOR } from "../types";
+import type { Statement, ThemeMode } from "../../shared/types";
+import { difficultyColor, FALLACY_COLOR, CYCLE_COLOR } from "../../shared/types";
 
 export type StatementNodeData = Statement & {
   hasFallacy: boolean;

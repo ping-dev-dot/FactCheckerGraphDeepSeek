@@ -1,6 +1,6 @@
 import { X, FileText, ShieldAlert, AlertOctagon, Repeat, GitFork } from "lucide-react";
-import type { Statement, Relation, AnalysisResult, PartialAnalysisResult, ThemeMode } from "../types";
-import { difficultyColor } from "../types";
+import type { Statement, Relation, AnalysisResult, PartialAnalysisResult, ThemeMode } from "../../shared/types";
+import { difficultyColor } from "../../shared/types";
 
 interface DetailSidebarProps {
   statement: Statement | null;
