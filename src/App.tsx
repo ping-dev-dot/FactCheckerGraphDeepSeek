@@ -198,49 +198,37 @@ export default function App() {
   const isRunning = status === "running" || status === "partial";
 
   return (
-    <div className="h-screen w-screen flex flex-col lg:flex-row bg-[#11111b] overflow-hidden relative">
-      {/* ================================================================ */}
-      {/* Mobile Header Bar (visible on < lg)                              */}
-      {/* Layout: [title + stage]  ...  [⚙️ Settings]                       */}
-      {/* ================================================================ */}
-      <div className="lg:hidden flex items-center justify-between px-3 py-2.5 bg-[#1e1e2e] border-b border-[#313244] z-30 flex-shrink-0 gap-2">
-        {/* Spacer for balance (left) */}
-        <div className="w-[44px] flex-shrink-0" />
-
-        {/* Title + stage badge (center) */}
-        <div className="flex items-center gap-1.5 min-w-0 justify-center">
-          <span className="text-sm font-bold text-[#cdd6f4] truncate">Argument Graph</span>
+    <div className="h-screen w-screen flex flex-col lg:flex-row bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] overflow-hidden relative font-sans">
+      {/* Mobile Header Bar */}
+      <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[var(--md-sys-color-surface-container)] border-b border-[var(--md-sys-color-outline-variant)] z-30 flex-shrink-0 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-base font-bold text-[var(--md-sys-color-on-surface)] truncate">Argument Graph</span>
           {pipelineProgress && (
-            <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-full bg-[#313244] text-[#89b4fa] flex-shrink-0">
+            <span className="px-2 py-0.5 text-[10px] font-mono rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-primary)] font-semibold flex-shrink-0">
               {pipelineProgress.stage}
             </span>
           )}
         </div>
 
-        {/* Settings toggle button (right) */}
-        <button
+        <md-icon-button
           onClick={() => {
             setMobileSettingsOpen((prev) => !prev);
             setMobileInputOpen(false);
           }}
-          className="px-2.5 py-1.5 text-xs rounded-lg bg-[#313244] text-[#cdd6f4] hover:bg-[#45475a] transition-colors flex items-center gap-1 cursor-pointer font-medium border border-[#45475a] flex-shrink-0"
+          aria-label="Toggle settings"
         >
-          <span>{mobileSettingsOpen ? "✕" : "⚙️"}</span>
-        </button>
+          <md-icon>{mobileSettingsOpen ? "close" : "settings"}</md-icon>
+        </md-icon-button>
       </div>
 
-      {/* ================================================================ */}
-      {/* Mobile Input Drawer — slides down from top, partial overlay      */}
-      {/* ================================================================ */}
+      {/* Mobile Input Drawer */}
       {mobileInputOpen && (
         <>
-          {/* Semi-transparent backdrop */}
           <div
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-xs"
             onClick={() => setMobileInputOpen(false)}
           />
-          {/* Slide-down panel */}
-          <div className="fixed top-0 left-0 right-0 z-[45] max-h-[60vh] bg-[#1e1e2e] border-b border-[#313244] rounded-b-xl shadow-2xl overflow-y-auto animate-slide-down lg:hidden">
+          <div className="fixed top-0 left-0 right-0 z-[45] max-h-[60vh] bg-[var(--md-sys-color-surface-container)] border-b border-[var(--md-sys-color-outline-variant)] rounded-b-2xl shadow-2xl overflow-y-auto animate-slide-down lg:hidden">
             <InputPanel
               inputText={inputText}
               onInputTextChange={setInputText}
@@ -266,20 +254,17 @@ export default function App() {
         </>
       )}
 
-      {/* ================================================================ */}
-      {/* Mobile Settings Overlay — full-screen with its own close button  */}
-      {/* ================================================================ */}
+      {/* Mobile Settings Overlay */}
       {mobileSettingsOpen && (
-        <div className="fixed inset-0 z-50 bg-[#11111b] flex flex-col lg:hidden">
-          <div className="flex items-center justify-between px-4 py-2.5 bg-[#1e1e2e] border-b border-[#313244] flex-shrink-0">
-            <h2 className="text-sm font-bold text-[#cdd6f4]">Settings</h2>
-            <button
-              onClick={() => setMobileSettingsOpen(false)}
-              className="text-[#a6adc8] hover:text-[#cdd6f4] transition-colors text-lg leading-none cursor-pointer p-1"
-              aria-label="Close settings"
-            >
-              ✕
-            </button>
+        <div className="fixed inset-0 z-50 bg-[var(--md-sys-color-surface)] flex flex-col lg:hidden">
+          <div className="flex items-center justify-between px-4 py-3 bg-[var(--md-sys-color-surface-container)] border-b border-[var(--md-sys-color-outline-variant)] flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <md-icon style={{ fontSize: '20px', color: "var(--md-sys-color-primary)" }}>settings</md-icon>
+              <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">Settings</h2>
+            </div>
+            <md-icon-button onClick={() => setMobileSettingsOpen(false)} aria-label="Close settings">
+              <md-icon>close</md-icon>
+            </md-icon-button>
           </div>
           <div className="p-4 overflow-y-auto flex-1">
             <SettingsPanel
@@ -294,10 +279,8 @@ export default function App() {
         </div>
       )}
 
-      {/* ================================================================ */}
-      {/* Desktop Left Panel — full InputPanel with settings               */}
-      {/* ================================================================ */}
-      <div className="hidden lg:flex w-[360px] flex-shrink-0 border-r border-[#313244] bg-[#1e1e2e] flex-col h-full overflow-hidden">
+      {/* Desktop Left Panel */}
+      <div className="hidden lg:flex w-[360px] flex-shrink-0 border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] flex-col h-full overflow-hidden">
         <InputPanel
           inputText={inputText}
           onInputTextChange={setInputText}
@@ -316,14 +299,15 @@ export default function App() {
         />
 
         {/* Global Debug Logs Button */}
-        <div className="px-4 pb-3 flex items-center justify-between border-t border-[#313244] pt-2">
+        <div className="px-4 pb-3 flex items-center justify-between border-t border-[var(--md-sys-color-outline-variant)] pt-2">
           <button
             onClick={() => setShowLogs((prev) => !prev)}
-            className="text-xs text-[#a6adc8] hover:text-[#cdd6f4] transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="text-xs text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] transition-colors flex items-center gap-1.5 cursor-pointer font-medium"
           >
-            <span>📋 {showLogs ? "Hide Logs" : "Show Logs"}</span>
+            <md-icon style={{ fontSize: '16px' }}>terminal</md-icon>
+            <span>{showLogs ? "Hide Logs" : "Show Logs"}</span>
             {logs.length > 0 && (
-              <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-[#313244] text-[#89b4fa] font-mono font-semibold">
+              <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-primary)] font-mono font-semibold">
                 {logs.length}
               </span>
             )}
@@ -331,7 +315,7 @@ export default function App() {
           {logs.length > 0 && (
             <button
               onClick={clearLogs}
-              className="text-[11px] text-[#585b70] hover:text-[#f38ba8] transition-colors cursor-pointer"
+              className="text-[11px] text-[var(--md-sys-color-outline)] hover:text-[var(--md-sys-color-error)] transition-colors cursor-pointer"
             >
               Clear
             </button>
@@ -339,22 +323,19 @@ export default function App() {
         </div>
       </div>
 
-      {/* ================================================================ */}
-      {/* Center — graph (flex-1 on mobile and desktop)                    */}
-      {/* ================================================================ */}
+      {/* Center Graph Canvas */}
       <div className="flex-1 min-w-0 relative h-full w-full">
-        {/* Floating input trigger — mobile only, always visible */}
-        <button
-          onClick={() => setMobileInputOpen(true)}
-          className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 
-                     rounded-full bg-[#89b4fa] text-[#1e1e2e] font-semibold text-sm
-                     hover:bg-[#74c7ec] transition-colors cursor-pointer shadow-lg
-                     lg:hidden flex items-center gap-1.5"
-          aria-label="Open input panel"
-        >
-          <span className="text-base leading-none">▼</span>
-          <span>Input</span>
-        </button>
+        {/* Floating input trigger — mobile only with ample padding and min-width */}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 lg:hidden">
+          <button
+            onClick={() => setMobileInputOpen(true)}
+            className="px-5 py-2.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold text-sm hover:opacity-90 transition-all cursor-pointer shadow-lg flex items-center gap-2 whitespace-nowrap min-w-[110px] justify-center"
+            aria-label="Open input panel"
+          >
+            <span className="material-symbols-outlined text-lg leading-none">keyboard_arrow_down</span>
+            <span>Input</span>
+          </button>
+        </div>
 
         {displayResult && displayResult.statements && displayResult.statements.length > 0 ? (
           <ReactFlowProvider>
@@ -391,12 +372,14 @@ export default function App() {
                   onToggleLogs={() => setShowLogs((prev) => !prev)}
                 />
               ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="text-4xl mb-2">🧠</div>
-                  <p className="text-[#cdd6f4] font-semibold">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-16 h-16 rounded-full bg-[var(--md-sys-color-primary-container)] flex items-center justify-center text-[var(--md-sys-color-on-primary-container)] mb-1">
+                    <span className="material-symbols-outlined text-3xl leading-none">psychology</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-[var(--md-sys-color-on-surface)]">
                     No analysis yet
-                  </p>
-                  <p className="text-xs text-[#585b70] max-w-xs">
+                  </h3>
+                  <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] max-w-xs leading-relaxed">
                     Enter your argument text and API key on the left, then click
                     "Analyze Argument" to get started.
                   </p>
@@ -407,9 +390,7 @@ export default function App() {
         )}
       </div>
 
-      {/* ================================================================ */}
-      {/* Right — detail sidebar (overlay on mobile, fixed on desktop)     */}
-      {/* ================================================================ */}
+      {/* Right Detail Sidebar */}
       {selectedStatement && displayResult && (
         <DetailSidebar
           statement={selectedStatement}
@@ -418,27 +399,26 @@ export default function App() {
         />
       )}
 
-      {/* ================================================================ */}
-      {/* Error notification — floating toast, always visible              */}
-      {/* ================================================================ */}
+      {/* Error notification floating toast */}
       {status === "error" && (
-        <div className="fixed bottom-4 left-4 right-4 lg:left-auto lg:right-4 lg:w-[360px] z-50 p-3 rounded-lg bg-[#f38ba8]/10 border border-[#f38ba8]/30 shadow-lg backdrop-blur-sm">
-          <p className="text-xs text-[#f38ba8] font-semibold mb-1">Error</p>
-          <p className="text-xs text-[#cdd6f4] leading-relaxed">
+        <div className="fixed bottom-4 left-4 right-4 lg:left-auto lg:right-4 lg:w-[360px] z-50 p-4 rounded-xl bg-[var(--md-sys-color-error-container)] border border-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error-container)] shadow-2xl backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-1 font-bold text-sm text-[var(--md-sys-color-error)]">
+            <span className="material-symbols-outlined text-lg leading-none">error</span>
+            Error
+          </div>
+          <p className="text-xs leading-relaxed">
             {errorMessage}
           </p>
           <button
             onClick={() => setStatus("idle")}
-            className="mt-2 text-xs text-[#89b4fa] hover:underline cursor-pointer"
+            className="mt-3 text-xs font-bold text-[var(--md-sys-color-primary)] hover:underline cursor-pointer"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {/* ================================================================ */}
-      {/* Floating Debug Log Console                                       */}
-      {/* ================================================================ */}
+      {/* Floating Debug Log Console */}
       {showLogs && (
         <DebugLogConsole
           logs={logs}
