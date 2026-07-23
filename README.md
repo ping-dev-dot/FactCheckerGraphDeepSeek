@@ -16,6 +16,7 @@
 | Multi-speaker debate (Alice vs Bob on climate policy) | Speaker-colored nodes, contradiction relations detected |
 | Circular reasoning | Detected cycle highlighted in purple with animated edge |
 | A fallacious argument (ad hominem, straw man, false dilemma) | Each fallacy flagged on its statement with type and explanation |
+| Claim verification | On-demand neural web search via Exa.ai with evidence synthesis & source citations |
 
 ## Tech Stack
 
@@ -26,6 +27,7 @@
 | **Backend** | Cloudflare Workers + Durable Objects |
 | **Pipeline** | EffectJS — typed errors, structured concurrency, services/layers |
 | **AI** | DeepSeek (`deepseek-chat`) via Cloudflare AI Gateway (BYOK) |
+| **Search / Evidence** | Exa.ai (`api.exa.ai`) — neural web search & snippet highlights |
 | **AI SDK** | Vercel AI SDK (`ai`) + `@ai-sdk/openai-compatible` |
 | **Validation** | effect/Schema — runtime validation on every API response |
 | **Deploy** | Cloudflare Workers via Wrangler |
@@ -37,6 +39,7 @@
 - A Cloudflare account with:
   - AI Gateway created with DeepSeek API key (BYOK)
   - `CF_AIG_TOKEN` — a Cloudflare API token with AI Gateway access
+- An Exa.ai API key (`EXA_API_KEY`) for claim verification and evidence retrieval.
 
 ### Run locally
 
@@ -44,14 +47,17 @@
 git clone https://github.com/HoodieRocks/FactCheckerGraphDeepSeek.git
 cd FactCheckerGraphDeepSeek
 
-# Set your AI Gateway token
-echo "CF_AIG_TOKEN=your-token-here" > .dev.vars
+# Set your AI Gateway & Exa API tokens
+cat << EOF > .dev.vars
+CF_AIG_TOKEN=your-cloudflare-gateway-token
+EXA_API_KEY=your-exa-api-key
+EOF
 
 npm install
 npm run dev     # starts wrangler dev on http://localhost:8787
 ```
 
-No API key needed in the browser — the backend handles all AI Gateway authentication.
+No API key needed in the browser — the backend handles all AI Gateway and Exa authentication.
 
 ### Deploy
 

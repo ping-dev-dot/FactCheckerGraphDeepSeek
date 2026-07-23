@@ -12,12 +12,14 @@ import {
   analyzeRelations,
   scoreStatements,
   postprocessConclusions,
+  verifyStatement,
   type AnalysisOutput,
 } from "./pipeline-logic";
 import type { Statement } from "../shared/schemas";
 
 interface Env {
   CF_AIG_TOKEN: string;
+  EXA_API_KEY?: string;
 }
 
 export class AnalysisPipelineDO extends DurableObject<Env> {
@@ -47,6 +49,70 @@ export class AnalysisPipelineDO extends DurableObject<Env> {
     // Stream: process stored text and return SSE
     if (url.pathname.endsWith("/stream")) {
       return this.handleSSE(request);
+    }
+
+    // Verify Statement: run Exa search and LLM synthesis for a single statement
+    if (url.pathname.endsWith("/verify-statement") && request.method === "POST") {
+      try {
+        const body = (await request.json()) as { statementId?: string; statementText?: string };
+        if (!body.statementId) {
+          return new Response(JSON.stringify({ error: "statementId is required" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const token = this.env.CF_AIG_TOKEN;
+        const exaKey = this.env.EXA_API_KEY || (typeof process !== "undefined" ? process.env.EXA_API_KEY : "");
+
+        if (!token) {
+          return new Response(JSON.stringify({ error: "CF_AIG_TOKEN not configured" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (!exaKey) {
+          return new Response(JSON.stringify({ error: "EXA_API_KEY not configured" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const client = makeAiClient(token);
+        const currentStatements = this.currentResult.statements || [];
+        let stmt = currentStatements.find((s) => s.id === body.statementId);
+
+        if (!stmt && body.statementText) {
+          stmt = {
+            id: body.statementId,
+            text: body.statementText,
+            factCheckDifficulty: 50,
+          };
+        }
+
+        if (!stmt) {
+          return new Response(JSON.stringify({ error: "Statement not found" }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const factCheck = await Effect.runPromise(verifyStatement(client, exaKey, stmt));
+
+        // Update statement in currentResult
+        stmt.factCheck = factCheck;
+        this.currentResult.statements = currentStatements.map((s) => (s.id === stmt.id ? stmt : s));
+
+        return new Response(JSON.stringify({ ok: true, factCheck }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        return new Response(
+          JSON.stringify({ error: `Verification failed: ${err instanceof Error ? err.message : String(err)}` }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        );
+      }
     }
 
     return new Response("AnalysisPipelineDO", { status: 200 });

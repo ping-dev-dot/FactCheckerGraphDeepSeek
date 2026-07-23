@@ -48,9 +48,26 @@ export function StatementNode({ data, selected }: NodeProps) {
     >
       <Handle type="target" position={Position.Top} className={`!w-2 !h-2 ${isLight ? "!bg-[#a1a1aa]" : "!bg-[#3f3f46]"}`} />
       <div className="flex items-center justify-between gap-2 mb-1.5">
-        <span className={`text-[11px] font-mono font-medium tracking-tight ${isLight ? "text-[#71717a]" : "text-[#a1a1aa]"}`}>
-          {node.id}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className={`text-[11px] font-mono font-medium tracking-tight ${isLight ? "text-[#71717a]" : "text-[#a1a1aa]"}`}>
+            {node.id}
+          </span>
+          {node.factCheck && (
+            <span
+              className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide ${
+                node.factCheck.verdict === "supported"
+                  ? "bg-[#a6e3a1]/15 text-[#a6e3a1] border-[#a6e3a1]/30"
+                  : node.factCheck.verdict === "refuted"
+                  ? "bg-[#f38ba8]/15 text-[#f38ba8] border-[#f38ba8]/30"
+                  : node.factCheck.verdict === "partially_true"
+                  ? "bg-[#f9e2af]/15 text-[#f9e2af] border-[#f9e2af]/30"
+                  : "bg-[#a6adc8]/15 text-[#a6adc8] border-[#a6adc8]/30"
+              }`}
+            >
+              {node.factCheck.verdict === "supported" ? "✓ Verified" : node.factCheck.verdict === "refuted" ? "✗ Refuted" : node.factCheck.verdict.replace("_", " ")}
+            </span>
+          )}
+        </div>
         {node.speakerName && (
           <span
             className="text-[10px] font-medium px-2 py-0.5 rounded border truncate max-w-[120px]"
