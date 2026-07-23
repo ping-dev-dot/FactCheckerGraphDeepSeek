@@ -3,13 +3,17 @@
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #1e1e2e;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #45475a;
+  background: #3f3f46;
   border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
 }
 
 /* Interactive cursor defaults */
@@ -23,34 +27,21 @@ button:disabled, select:disabled {
 
 /* React Flow overrides */
 .react-flow__node {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   cursor: pointer;
+}
+
+.react-flow__node-statementNode {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
 }
 
 .react-flow__edge-path {
-  stroke-width: 2;
+  stroke-width: 1.75;
 }
 
-.react-flow__controls button {
-  background: #1e1e2e;
-  border: 1px solid #45475a;
-  color: #cdd6f4;
-  cursor: pointer;
-}
-.react-flow__controls button:hover {
-  background: #313244;
-}
-
-.react-flow__background {
-  background: #11111b;
-}
-
-/* Cycle edge dash animation */
-@keyframes dashdraw {
-  to {
-    stroke-dashoffset: -24;
-  }
-}
 
 /* Slide-down animation for mobile input drawer */
 @keyframes slide-down {
@@ -64,5 +55,7 @@ button:disabled, select:disabled {
   }
 }
 .animate-slide-down {
-  animation: slide-down 0.25s ease-out;
+  animation: slide-down 0.2s ease-out;
 }
+
+
