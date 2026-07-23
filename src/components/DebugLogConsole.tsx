@@ -18,119 +18,107 @@ export function DebugLogConsole({ logs, onClear, onClose }: DebugLogConsoleProps
     }
   }, [logs, autoScroll]);
 
-const handleCopy = async () => {
-  const text = logs
-    .map(
-      (l) =>
-        `[${l.timestamp}] [${l.level.toUpperCase()}] ${l.message}${
-          l.details ? ` (${l.details})` : ""
-        }`
-    )
-    .join("\n");
+  const handleCopy = async () => {
+    const text = logs
+      .map(
+        (l) =>
+          `[${l.timestamp}] [${l.level.toUpperCase()}] ${l.message}${
+            l.details ? ` (${l.details})` : ""
+          }`
+      )
+      .join("\n");
 
-  try {
-    if (!navigator.clipboard?.writeText) {
-      throw new Error("Clipboard API not available");
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard API not available");
+      }
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
     }
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  } catch {
-    setCopied(false);
-  }
-};
+  };
 
   const getLevelStyle = (level: LogEntry["level"]) => {
     switch (level) {
       case "info":
-        return "bg-[#89b4fa]/20 text-[#89b4fa] border-[#89b4fa]/40";
+        return "bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]";
       case "debug":
-        return "bg-[#a6adc8]/20 text-[#a6adc8] border-[#a6adc8]/40";
+        return "bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)]";
       case "warn":
-        return "bg-[#f9e2af]/20 text-[#f9e2af] border-[#f9e2af]/40";
+        return "bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)]";
       case "error":
-        return "bg-[#f38ba8]/20 text-[#f38ba8] border-[#f38ba8]/40";
+        return "bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]";
     }
   };
 
   return (
-    <div className="fixed bottom-2 left-2 right-2 sm:left-auto sm:right-4 sm:bottom-4 z-50 w-auto sm:w-[560px] max-h-[60vh] sm:max-h-[400px] bg-[#181825] border border-[#313244] rounded-xl shadow-2xl flex flex-col overflow-hidden font-mono text-xs">
+    <div className="fixed bottom-2 left-2 right-2 sm:left-auto sm:right-4 sm:bottom-4 z-50 w-auto sm:w-[560px] max-h-[60vh] sm:max-h-[400px] bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl shadow-2xl flex flex-col overflow-hidden font-mono text-xs">
+      <md-elevation></md-elevation>
+
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 bg-[#1e1e2e] border-b border-[#313244] select-none">
+      <div className="flex items-center justify-between px-4 py-2 bg-[var(--md-sys-color-surface-container-high)] border-b border-[var(--md-sys-color-outline-variant)] select-none">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#89b4fa] animate-pulse" />
-          <span className="font-semibold text-[#cdd6f4]">
+          <md-icon style={{ fontSize: '18px', color: "var(--md-sys-color-primary)" }}>terminal</md-icon>
+          <span className="font-bold text-[var(--md-sys-color-on-surface)]">
             Detailed Debug Logs ({logs.length})
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1 text-[11px] text-[#a6adc8] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoScroll}
-              onChange={(e) => setAutoScroll(e.target.checked)}
-              className="accent-[#89b4fa] rounded cursor-pointer"
-            />
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setAutoScroll((prev) => !prev)}
+            className={`px-2 py-1 rounded text-[11px] flex items-center gap-1 transition-colors cursor-pointer ${
+              autoScroll ? "text-[var(--md-sys-color-primary)] font-semibold" : "text-[var(--md-sys-color-on-surface-variant)]"
+            }`}
+          >
+            <md-icon style={{ fontSize: '14px' }}>{autoScroll ? "vertical_align_bottom" : "pause"}</md-icon>
             Auto-scroll
-          </label>
-          <button
-            onClick={handleCopy}
-            disabled={logs.length === 0}
-            className="px-2 py-0.5 rounded bg-[#313244] hover:bg-[#45475a] text-[#cdd6f4] transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-            title="Copy logs to clipboard"
-          >
-            {copied ? "✓ Copied" : "📋 Copy"}
           </button>
-          <button
-            onClick={onClear}
-            disabled={logs.length === 0}
-            className="px-2 py-0.5 rounded bg-[#313244] hover:bg-[#45475a] text-[#cdd6f4] transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-            title="Clear logs"
-          >
-            🗑 Clear
-          </button>
-          <button
-            onClick={onClose}
-            className="p-1 text-[#a6adc8] hover:text-[#cdd6f4] transition-colors cursor-pointer"
-            title="Close log viewer"
-          >
-            ✕
-          </button>
+          <md-text-button onClick={handleCopy} disabled={logs.length === 0}>
+            {copied ? "Copied" : "Copy"}
+          </md-text-button>
+          <md-text-button onClick={onClear} disabled={logs.length === 0}>
+            Clear
+          </md-text-button>
+          <md-icon-button onClick={onClose} aria-label="Close logs">
+            <md-icon>close</md-icon>
+          </md-icon-button>
         </div>
       </div>
 
       {/* Log items container */}
       <div
         ref={scrollRef}
-        className="flex-1 p-3 overflow-y-auto space-y-1.5 bg-[#11111b] min-h-[160px] max-h-[320px]"
+        className="flex-1 p-3 overflow-y-auto space-y-2 bg-[var(--md-sys-color-surface-container-lowest)] min-h-[160px] max-h-[320px]"
       >
         {logs.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-[#585b70] italic py-8">
+          <div className="h-full flex items-center justify-center text-[var(--md-sys-color-outline)] italic py-8">
             No logs recorded yet. Start an analysis to see detailed stream logs.
           </div>
         ) : (
           logs.map((log) => (
             <div
               key={log.id}
-              className="flex flex-col gap-0.5 p-1.5 rounded bg-[#1e1e2e]/60 hover:bg-[#1e1e2e] transition-colors"
+              className="flex flex-col gap-1 p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]/50"
             >
               <div className="flex items-center gap-2">
-                <span className="text-[#585b70] text-[10px] select-none">
+                <span className="text-[var(--md-sys-color-outline)] text-[10px] select-none">
                   {log.timestamp}
                 </span>
                 <span
-                  className={`px-1 py-0.2 rounded text-[9px] font-bold border uppercase ${getLevelStyle(
+                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${getLevelStyle(
                     log.level
                   )}`}
                 >
                   {log.level}
                 </span>
-                <span className="text-[#cdd6f4] font-medium break-all">
+                <span className="text-[var(--md-sys-color-on-surface)] font-medium break-all">
                   {log.message}
                 </span>
               </div>
               {log.details && (
-                <div className="pl-14 text-[#a6adc8] text-[10px] break-all leading-relaxed whitespace-pre-wrap">
+                <div className="pl-14 text-[var(--md-sys-color-on-surface-variant)] text-[10px] break-all leading-relaxed whitespace-pre-wrap">
                   {log.details}
                 </div>
               )}

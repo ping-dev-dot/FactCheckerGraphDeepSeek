@@ -1,6 +1,6 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { Statement } from "../types";
-import { difficultyColor, difficultyBgColor, FALLACY_COLOR } from "../types";
+import { difficultyColor, FALLACY_COLOR } from "../types";
 
 export type StatementNodeData = Statement & {
   hasFallacy: boolean;
@@ -11,7 +11,6 @@ export type StatementNodeData = Statement & {
 
 export function StatementNode({ data, selected }: NodeProps) {
   const node = data as unknown as StatementNodeData;
-  const bg = difficultyBgColor(node.factCheckDifficulty);
   const border = difficultyColor(node.factCheckDifficulty);
   const cycleBorder = node.isInCycle ? "#cba6f7" : border;
   const fallacyBorder = node.hasFallacy ? FALLACY_COLOR : cycleBorder;
@@ -19,29 +18,30 @@ export function StatementNode({ data, selected }: NodeProps) {
   return (
     <div
       className={`
-        relative px-4 py-3 rounded-xl border-2 shadow-lg min-w-[180px] max-w-[280px]
-        transition-all duration-200 cursor-pointer
-        ${selected ? "ring-2 ring-[#89b4fa] scale-105" : ""}
+        relative px-4 py-3 rounded-2xl border min-w-[200px] max-w-[280px]
+        transition-all duration-200 cursor-pointer bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]
+        ${selected ? "ring-2 ring-[var(--md-sys-color-primary)] scale-105" : ""}
       `}
       style={{
-        background: bg,
         borderColor: fallacyBorder,
         boxShadow: node.isInCycle
-          ? `0 0 12px rgba(203, 166, 247, 0.4), 0 0 24px rgba(203, 166, 247, 0.15)`
+          ? `0 0 12px rgba(203, 166, 247, 0.4)`
           : node.hasFallacy
             ? `0 0 10px rgba(243, 139, 168, 0.3)`
-            : undefined,
+            : "0 2px 6px rgba(0,0,0,0.3)",
       }}
     >
-      <Handle type="target" position={Position.Top} className="!bg-[#585b70]" />
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-xs font-mono text-[#a6adc8]">{node.id}</span>
+      <md-elevation></md-elevation>
+      <Handle type="target" position={Position.Top} className="!bg-[var(--md-sys-color-outline)]" />
+      
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <span className="text-xs font-mono font-bold text-[var(--md-sys-color-primary)]">{node.id}</span>
         {node.speakerName && (
           <span
-            className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full truncate max-w-[120px]"
+            className="text-[10px] font-medium px-2 py-0.5 rounded-full truncate max-w-[120px]"
             style={{
               background: (node.speakerColor ?? "#585b70") + "22",
-              color: node.speakerColor ?? "#a6adc8",
+              color: node.speakerColor ?? "var(--md-sys-color-on-surface-variant)",
               border: `1px solid ${(node.speakerColor ?? "#585b70")}44`,
             }}
           >
@@ -49,34 +49,41 @@ export function StatementNode({ data, selected }: NodeProps) {
           </span>
         )}
       </div>
-      <p className="text-sm text-[#cdd6f4] leading-snug line-clamp-3">
+
+      <p className="text-sm text-[var(--md-sys-color-on-surface)] leading-snug line-clamp-3">
         {node.text}
       </p>
-      <div className="flex items-center gap-2 mt-2">
-        <div className="flex-1 h-1.5 rounded-full bg-[#313244] overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{
-              width: `${node.factCheckDifficulty}%`,
-              background: `linear-gradient(90deg, #a6e3a1, #f9e2af, #f38ba8)`,
-            }}
-          />
+
+      <div className="flex items-center gap-2 mt-3">
+        <div className="flex-1">
+          <md-linear-progress
+            value={node.factCheckDifficulty / 100}
+            style={{ width: "100%" }}
+          ></md-linear-progress>
         </div>
-        <span className="text-xs text-[#a6adc8] font-mono">
+        <span className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-mono font-semibold">
           {node.factCheckDifficulty}%
         </span>
       </div>
-      {node.hasFallacy && (
-        <div className="mt-1.5 text-xs text-[#f38ba8] font-semibold">
-          ⚠ Fallacy
+
+      {(node.hasFallacy || node.isInCycle) && (
+        <div className="flex items-center gap-2 mt-2 pt-1 border-t border-[var(--md-sys-color-outline-variant)]">
+          {node.hasFallacy && (
+            <span className="text-[11px] font-semibold text-[var(--md-sys-color-error)] flex items-center gap-0.5">
+              <md-icon style={{ fontSize: '14px', color: "var(--md-sys-color-error)" }}>warning</md-icon>
+              Fallacy
+            </span>
+          )}
+          {node.isInCycle && (
+            <span className="text-[11px] font-semibold text-[var(--md-sys-color-primary)] flex items-center gap-0.5">
+              <md-icon style={{ fontSize: '14px', color: "var(--md-sys-color-primary)" }}>sync</md-icon>
+              Cycle
+            </span>
+          )}
         </div>
       )}
-      {node.isInCycle && (
-        <div className="mt-1.5 text-xs text-[#cba6f7] font-semibold">
-          🔄 Cycle
-        </div>
-      )}
-      <Handle type="source" position={Position.Bottom} className="!bg-[#585b70]" />
+
+      <Handle type="source" position={Position.Bottom} className="!bg-[var(--md-sys-color-outline)]" />
     </div>
   );
 }

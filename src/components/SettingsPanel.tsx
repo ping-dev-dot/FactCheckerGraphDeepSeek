@@ -21,77 +21,66 @@ export function SettingsPanel({
   const [showApiKey, setShowApiKey] = useState(false);
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* API Provider Selector */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-[#a6adc8] font-medium">
+    <div className="flex flex-col gap-3.5">
+      {/* API Provider Selection with Material Chips */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-medium text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
+          <md-icon style={{ fontSize: '16px' }}>api</md-icon>
           API Provider
         </label>
-        <div className="grid grid-cols-2 gap-1 p-1 bg-[#1e1e2e] border border-[#45475a] rounded-lg">
-          <button
-            type="button"
+        <md-chip-set>
+          <md-filter-chip
+            label="DeepSeek"
+            selected={apiProvider === "deepseek"}
             onClick={() => onApiProviderChange("deepseek")}
-            className={`py-1.5 px-3 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-              apiProvider === "deepseek"
-                ? "bg-[#89b4fa] text-[#1e1e2e] font-semibold"
-                : "text-[#a6adc8] hover:text-[#cdd6f4]"
-            }`}
-          >
-            DeepSeek
-          </button>
-          <button
-            type="button"
+          ></md-filter-chip>
+          <md-filter-chip
+            label="OpenRouter"
+            selected={apiProvider === "openrouter"}
             onClick={() => onApiProviderChange("openrouter")}
-            className={`py-1.5 px-3 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-              apiProvider === "openrouter"
-                ? "bg-[#89b4fa] text-[#1e1e2e] font-semibold"
-                : "text-[#a6adc8] hover:text-[#cdd6f4]"
-            }`}
-          >
-            OpenRouter
-          </button>
-        </div>
+          ></md-filter-chip>
+        </md-chip-set>
       </div>
 
-      {/* API Key */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-[#a6adc8] font-medium">
+      {/* API Key Input */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-medium text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
+          <md-icon style={{ fontSize: '16px' }}>key</md-icon>
           {apiProvider === "openrouter" ? "OpenRouter API Key" : "DeepSeek API Key"}
         </label>
         <div className="relative flex items-center">
-          <input
+          <md-outlined-text-field
             type={showApiKey ? "text" : "password"}
             value={apiKey}
-            onChange={(e) => onApiKeyChange(e.target.value)}
-            placeholder={apiProvider === "openrouter" ? "sk-or-v1-..." : "sk-..."}
-            className="w-full pl-3 pr-9 py-2 bg-[#1e1e2e] border border-[#45475a] rounded-lg text-[#cdd6f4] text-sm
-                       placeholder:text-[#585b70] focus:outline-none focus:border-[#89b4fa] transition-colors font-mono text-xs"
-          />
-          <button
-            type="button"
-            onClick={() => setShowApiKey((prev) => !prev)}
-            title={showApiKey ? "Hide API key" : "Show API key"}
-            className="absolute right-2 text-[#a6adc8] hover:text-[#cdd6f4] p-1 cursor-pointer transition-colors text-xs"
+            label={apiProvider === "openrouter" ? "sk-or-v1-..." : "sk-..."}
+            oninput={(e: any) => onApiKeyChange(e.target.value)}
+            style={{ width: "100%" }}
           >
-            {showApiKey ? "👁️" : "🙈"}
-          </button>
+            <md-icon-button
+              slot="trailing-icon"
+              onClick={() => setShowApiKey((prev) => !prev)}
+              aria-label={showApiKey ? "Hide key" : "Show key"}
+            >
+              <md-icon>{showApiKey ? "visibility_off" : "visibility"}</md-icon>
+            </md-icon-button>
+          </md-outlined-text-field>
         </div>
       </div>
 
       {/* OpenRouter Model Input */}
       {apiProvider === "openrouter" && (
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[#a6adc8] font-medium">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
+            <md-icon style={{ fontSize: '16px' }}>psychology</md-icon>
             Model Name
           </label>
-          <input
+          <md-outlined-text-field
             type="text"
             value={model}
-            onChange={(e) => onModelChange(e.target.value)}
-            placeholder="e.g. deepseek/deepseek-chat"
-            className="w-full px-3 py-2 bg-[#1e1e2e] border border-[#45475a] rounded-lg text-[#cdd6f4] text-sm
-                       placeholder:text-[#585b70] focus:outline-none focus:border-[#89b4fa] transition-colors"
-          />
+            label="e.g. deepseek/deepseek-chat"
+            oninput={(e: any) => onModelChange(e.target.value)}
+            style={{ width: "100%" }}
+          ></md-outlined-text-field>
         </div>
       )}
     </div>

@@ -12,11 +12,11 @@ interface PipelineProgressProps {
 }
 
 const STAGE_CONFIG: Record<string, { icon: string; label: string }> = {
-  preprocessing: { icon: "🔍", label: "Preprocessing" },
-  extracting: { icon: "📝", label: "Extracting statements" },
-  analyzing_relations: { icon: "🔗", label: "Analyzing relations" },
-  scoring: { icon: "📊", label: "Scoring fact-check difficulty" },
-  complete: { icon: "✅", label: "Complete" },
+  preprocessing: { icon: "manage_search", label: "Preprocessing" },
+  extracting: { icon: "edit_note", label: "Extracting statements" },
+  analyzing_relations: { icon: "account_tree", label: "Analyzing relations" },
+  scoring: { icon: "fact_check", label: "Scoring fact-check difficulty" },
+  complete: { icon: "check_circle", label: "Complete" },
 };
 
 export function PipelineProgress({
@@ -39,20 +39,23 @@ export function PipelineProgress({
   );
 
   return (
-    <div className="flex flex-col items-center gap-4 px-8 py-6">
+    <div className="flex flex-col items-center gap-4 px-8 py-6 max-w-md mx-auto">
       {/* Stage indicator */}
-      <div className="flex items-center gap-2">
-        {progress.stage !== "complete" && !isError && (
-          <div className="w-8 h-8 border-3 border-[#89b4fa] border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center gap-3">
+        {progress.stage !== "complete" && !isError ? (
+          <md-circular-progress indeterminate style={{ width: "24px", height: "24px" }}></md-circular-progress>
+        ) : (
+          <md-icon style={{ color: isError ? "var(--md-sys-color-error)" : "var(--md-sys-color-primary)" }}>
+            {config.icon}
+          </md-icon>
         )}
-        <span className="text-2xl">{config.icon}</span>
         <span
-          className={`text-sm font-semibold ${
+          className={`text-base font-semibold ${
             isComplete
-              ? "text-[#a6e3a1]"
+              ? "text-[var(--md-sys-color-primary)]"
               : isError
-                ? "text-[#f38ba8]"
-                : "text-[#cdd6f4]"
+                ? "text-[var(--md-sys-color-error)]"
+                : "text-[var(--md-sys-color-on-surface)]"
           }`}
         >
           {isError ? "Error" : config.label}
@@ -61,18 +64,20 @@ export function PipelineProgress({
 
       {/* Statement count */}
       {progress.statementsFound > 0 && (
-        <div className="text-xs text-[#89b4fa] font-mono">
+        <div className="text-xs font-mono text-[var(--md-sys-color-primary)] flex items-center gap-1">
+          <md-icon style={{ fontSize: '16px' }}>format_list_bulleted</md-icon>
           {progress.statementsFound} statement{progress.statementsFound !== 1 ? "s" : ""} found
         </div>
       )}
 
       {/* Progress bar */}
       {!isComplete && !isError && (
-        <div className="w-48 h-1.5 rounded-full bg-[#313244] overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-[#89b4fa] to-[#a6e3a1] transition-all duration-500"
-            style={{ width: `${progressPercent}%` }}
-          />
+        <div className="w-64">
+          <md-linear-progress
+            value={progressPercent / 100}
+            buffer={1}
+            style={{ width: "100%" }}
+          ></md-linear-progress>
         </div>
       )}
 
@@ -80,39 +85,36 @@ export function PipelineProgress({
       {onToggleLogs && (
         <button
           onClick={onToggleLogs}
-          className="text-xs text-[#a6adc8] hover:text-[#cdd6f4] underline flex items-center gap-1.5 cursor-pointer transition-colors"
+          className="text-xs text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] underline flex items-center gap-1.5 cursor-pointer transition-colors"
         >
-          <span>📋 {showLogs ? "Hide Detailed Logs" : "Show Detailed Logs"}</span>
+          <md-icon style={{ fontSize: '16px' }}>list_alt</md-icon>
+          <span>{showLogs ? "Hide Detailed Logs" : "Show Detailed Logs"}</span>
           {logCount > 0 && (
-            <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-[#313244] text-[#89b4fa] font-mono font-semibold">
+            <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-primary)] font-mono font-semibold">
               {logCount}
             </span>
           )}
         </button>
       )}
 
-      {/* Error with recovery */}
+      {/* Error recovery */}
       {isError && (
-        <div className="flex flex-col items-center gap-2 mt-2">
-          <p className="text-xs text-[#f38ba8] text-center max-w-xs">
+        <div className="flex flex-col items-center gap-3 mt-2">
+          <p className="text-xs text-[var(--md-sys-color-error)] text-center leading-relaxed bg-[var(--md-sys-color-error-container)] p-3 rounded-lg">
             {errorMessage}
           </p>
           <div className="flex items-center gap-2">
             {onRetry && (
-              <button
-                onClick={onRetry}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#89b4fa] text-[#1e1e2e] hover:bg-[#74c7ec] transition-colors cursor-pointer"
-              >
+              <md-filled-button onClick={onRetry}>
+                <md-icon slot="icon">refresh</md-icon>
                 Retry
-              </button>
+              </md-filled-button>
             )}
             {isPartial && onViewPartial && (
-              <button
-                onClick={onViewPartial}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#89b4fa] text-[#89b4fa] hover:bg-[#89b4fa]/10 transition-colors cursor-pointer"
-              >
+              <md-outlined-button onClick={onViewPartial}>
+                <md-icon slot="icon">visibility</md-icon>
                 View Statements
-              </button>
+              </md-outlined-button>
             )}
           </div>
         </div>
@@ -120,7 +122,7 @@ export function PipelineProgress({
 
       {/* Success message */}
       {isComplete && (
-        <p className="text-xs text-[#a6adc8]">{progress.message}</p>
+        <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{progress.message}</p>
       )}
     </div>
   );
