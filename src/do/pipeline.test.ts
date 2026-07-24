@@ -232,8 +232,65 @@ console.log("\n📋 Test 7: Conclusion Post-Processor");
   assert(result3.length === 2, "Does not duplicate already-captured conclusions");
 }
 
+// ═══════════════════════════════════════════════════
+// Test 8: Statement Verification Logic
+// ═══════════════════════════════════════════════════
+console.log("\n📋 Test 8: Statement Verification Logic");
+{
+  const { verifyStatement } = await import("./pipeline-logic");
+
+  const mockClient = {
+    generateText: (params: { system: string; prompt: string }) => {
+      return Effect.succeed(
+        JSON.stringify({
+          verdict: "supported",
+          confidence: 95,
+          summary: "Web sources confirm global carbon emissions rose by 1.1% in 2023.",
+        })
+      );
+    },
+    streamText: () => {
+      throw new Error("Not implemented");
+    },
+  };
+
+  const mockFetch = (async () => {
+    return new Response(
+      JSON.stringify({
+        results: [
+          {
+            id: "exa-1",
+            url: "https://example.com/climate-report-2023",
+            title: "Global Carbon Budget 2023",
+            highlights: ["Global carbon emissions rose by 1.1% in 2023."],
+            score: 0.98,
+          },
+        ],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }) as typeof fetch;
+
+  const statement = {
+    id: "S1",
+    text: "Global carbon emissions rose by 1.1% in 2023",
+    factCheckDifficulty: 30,
+  };
+
+  const factCheck = await Effect.runPromise(
+    verifyStatement(mockClient, "test-exa-key", statement, mockFetch)
+  );
+
+  assert(factCheck.statementId === "S1", "Correct statementId");
+  assert(factCheck.verdict === "supported", "Verdict is supported");
+  assert(factCheck.confidence === 95, "Confidence score is 95%");
+  assert(factCheck.sources.length === 1, "Retrieved 1 source");
+  assert(factCheck.sources[0].url === "https://example.com/climate-report-2023", "Source URL correct");
+}
+
 console.log(`\n${"=".repeat(50)}`);
 console.log(`Results: ${passed} passed, ${failed} failed`);
 console.log(`${"=".repeat(50)}\n`);
 
 if (failed > 0) process.exit(1);
+

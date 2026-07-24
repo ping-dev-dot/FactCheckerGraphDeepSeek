@@ -5,16 +5,18 @@
  */
 
 import { Effect, Schema } from "effect";
-import { StatementSchema } from "../shared/schemas";
+import { StatementSchema, FactCheckSynthesisSchema } from "../shared/schemas";
 import { detectSpeakers } from "../shared/speaker-detection";
-import { chunkText } from "../shared/text-chunking";
-import { createJsonBuffer } from "../shared/json-extractor";
+import { createJsonBuffer, extractJson } from "../shared/json-extractor";
 import {
   STEP1_EXTRACTION_PROMPT,
   STEP2_RELATIONS_PROMPT,
   STEP3_SCORING_PROMPT,
+  STEP4_VERIFICATION_PROMPT,
 } from "../shared/prompts";
 import type { AiClientShape } from "./ai-client";
+import { searchExa } from "./exa-client";
+import type { StatementFactCheck, FactCheckVerdict } from "../shared/types";
 
 // ── Schemas for LLM output ──
 
@@ -309,3 +311,68 @@ export function runFullPipeline(
     return { statements: scored, relations, fallacies, cycles, speakers };
   });
 }
+
+// ── Step 4: Verify Statement with Exa + DeepSeek ──
+
+export function verifyStatement(
+  client: AiClientShape,
+  exaApiKey: string,
+  statement: Statement,
+  fetchFn?: typeof fetch
+): Effect.Effect<StatementFactCheck, Error> {
+  return Effect.gen(function* () {
+    // 1. Fetch web search evidence via Exa
+    const sources = yield* searchExa(exaApiKey, statement.text, 5, fetchFn);
+
+    if (sources.length === 0) {
+      return {
+        statementId: statement.id,
+        verdict: "inconclusive" as const,
+        confidence: 0,
+        summary: "No relevant web evidence could be retrieved for this statement.",
+        sources: [],
+        verifiedAt: new Date().toISOString(),
+      };
+    }
+
+    // 2. Format evidence for synthesis prompt
+    const evidenceText = sources
+      .map(
+        (src, idx) =>
+          `[Source ${idx + 1}] Title: "${src.title}"\nURL: ${src.url}\nSnippet: "${src.snippet}"`
+      )
+      .join("\n\n");
+
+    const prompt = `Proposition Statement: "${statement.text}"\n\nWeb Evidence Snippets:\n${evidenceText}`;
+
+    // 3. Call LLM to synthesize verdict
+    const raw = yield* client.generateText({
+      system: STEP4_VERIFICATION_PROMPT,
+      prompt,
+      maxTokens: 512,
+    });
+
+    const json = extractJson(raw);
+    const decoded = Schema.decodeUnknownEither(FactCheckSynthesisSchema)(json);
+
+    let verdict: FactCheckVerdict = "inconclusive";
+    let confidence = 50;
+    let summary = "Evidence was retrieved, but synthesis returned an ambiguous result.";
+
+    if (decoded._tag === "Right") {
+      verdict = decoded.right.verdict as FactCheckVerdict;
+      confidence = decoded.right.confidence;
+      summary = decoded.right.summary;
+    }
+
+    return {
+      statementId: statement.id,
+      verdict,
+      confidence,
+      summary,
+      sources,
+      verifiedAt: new Date().toISOString(),
+    };
+  });
+}
+

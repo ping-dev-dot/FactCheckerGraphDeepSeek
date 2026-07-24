@@ -22,9 +22,10 @@ This is a **full-stack Cloudflare application**:
    - **Step 1**: Statement extraction via SSE streaming — nodes appear live
    - **Step 2**: Relation/fallacy/cycle analysis
    - **Step 3**: Fact-check difficulty scoring per statement (parallel)
+   - **Step 4**: On-demand web search evidence grounding via Exa.ai REST API & DeepSeek synthesis
 3. Each step can fail independently — partial results are always surfaced to the UI
 4. Renders an interactive argument graph using ReactFlow + dagre auto-layout
-5. Shows statement details, speaker attribution, fallacies, and cycles in a sidebar on node click
+5. Shows statement details, speaker attribution, fallacies, cycles, and Exa web grounding in a sidebar on node click
 
 ### Architecture
 
@@ -33,17 +34,19 @@ Browser (React SPA)
     │  GET /* → static assets from Worker
     │  POST /api/analyze → creates DO, returns analysisId
     │  GET /api/analyze/:id/stream → SSE progress from DO
+    │  POST /api/analyze/:id/verify-statement → on-demand Exa verification
     ▼
 Cloudflare Worker (src/worker.ts)
     │  Static asset serving + API routing to Durable Objects
     ▼
 Durable Object (src/do/pipeline.ts, one per analysis)
-    │  Orchestrates 4-step pipeline via EffectJS
+    │  Orchestrates 4-step pipeline + Exa verification via EffectJS
     │  Calls DeepSeek through AI Gateway (BYOK — no keys in browser)
+    │  Calls Exa.ai REST API for neural web search & highlights
     │  Streams progress events as SSE to client
     ▼
-AI Gateway → DeepSeek
-    │  API key stored in Cloudflare Secrets Store / BYOK
+AI Gateway → DeepSeek  /  Exa.ai API
+    │  API key stored in Cloudflare Secrets Store / BYOK / .dev.vars
     │  AI SDK (@ai-sdk/openai-compatible) for LLM calls
 ```
 
@@ -64,25 +67,27 @@ This project follows a **Figma-like approach to UI complexity**. The default vie
 
 | File | Role | Edit Safely? |
 |------|------|-------------|
-| `src/shared/prompts.ts` | All system prompts (step 1/2/3 extraction, relations, scoring) | ⚠️ **Prompt edits require approval** |
+| `src/shared/prompts.ts` | All system prompts (step 1/2/3 extraction, relations, scoring, step 4 verification) | ⚠️ **Prompt edits require approval** |
 | `src/shared/schemas.ts` | effect/Schema definitions for runtime validation (DO-only) | ✅ Must stay in sync with prompts |
 | `src/shared/types.ts` | Plain TS interfaces — shared by client and DO. **Must NOT import effect or any heavy library** | ✅ |
 | `src/shared/speaker-detection.ts` | Regex-based speaker detection + text segmentation | ✅ |
 | `src/shared/text-chunking.ts` | Token estimation + sentence-boundary chunking with context preambles | ✅ |
 | `src/shared/json-extractor.ts` | Incremental JSON parser — handles partial streams, NDJSON arrays, malformed detection, uses effect/Schema | ✅ |
 | `src/shared/id-generator.ts` | Cross-runtime UUID generation (browser crypto + Workers fallback) | ✅ |
-| `src/do/pipeline.ts` | **Durable Object class** — SSE handler, orchestrates pipeline steps, progress events | ✅ Core logic |
-| `src/do/pipeline-logic.ts` | **Effect-based pipeline functions** — `preprocess()`, `extractStatements()`, `analyzeRelations()`, `scoreStatements()`, `postprocessConclusions()`, `runFullPipeline()` | ✅ Core logic |
+| `src/do/pipeline.ts` | **Durable Object class** — SSE handler, orchestrates pipeline steps, verify statement endpoint | ✅ Core logic |
+| `src/do/pipeline-logic.ts` | **Effect-based pipeline functions** — `preprocess()`, `extractStatements()`, `analyzeRelations()`, `scoreStatements()`, `postprocessConclusions()`, `verifyStatement()`, `runFullPipeline()` | ✅ Core logic |
+| `src/do/exa-client.ts` | **Exa.ai search client** — Effect wrapper for Exa neural web search REST API | ✅ |
+| `src/do/exa-client.test.ts` | Unit tests for Exa search client | ✅ |
 | `src/do/ai-client.ts` | Effect service wrapping `@ai-sdk/openai-compatible` + AI Gateway for DeepSeek calls | ✅ |
-| `src/do/pipeline.test.ts` | Unit tests for pipeline logic (mock + schema) | ✅ |
+| `src/do/pipeline.test.ts` | Unit tests for pipeline & statement verification logic (mock + schema) | ✅ |
 | `src/do/pipeline-e2e.test.ts` | **E2E tests against real AI Gateway** — token streaming, formats, all 3 pipeline steps | ✅ |
-| `src/worker.ts` | Worker fetch handler — static assets, `POST /api/analyze`, `GET /api/analyze/:id/stream` | ✅ |
-| `src/client/App.tsx` | Top-level orchestrator — state, handlers, EventSource SSE consumption | ✅ |
+| `src/worker.ts` | Worker fetch handler — static assets, `POST /api/analyze`, `GET /api/analyze/:id/stream`, `POST /api/analyze/:id/verify-statement` | ✅ |
+| `src/client/App.tsx` | Top-level orchestrator — state, handlers, EventSource SSE consumption, statement verification handler | ✅ |
 | `src/client/components/InputPanel.tsx` | Left panel — preset selector, text area, submit button (no API key) | ✅ |
 | `src/client/components/GraphCanvas.tsx` | Center — ReactFlow + dagre layout | ✅ |
-| `src/client/components/StatementNode.tsx` | Custom node — speaker badge, difficulty bar, fallacy/cycle badges | ✅ |
+| `src/client/components/StatementNode.tsx` | Custom node — speaker badge, difficulty bar, fallacy/cycle badges, verification badge | ✅ |
 | `src/client/components/ArgumentEdge.tsx` | Custom edge — cycle glow + dash animation | ✅ |
-| `src/client/components/DetailSidebar.tsx` | Right panel — statement detail, fallacies, cycles, relations, speaker info | ✅ |
+| `src/client/components/DetailSidebar.tsx` | Right panel — statement detail, fallacies, cycles, relations, speaker info, Exa web evidence & citations | ✅ |
 | `src/client/components/PipelineProgress.tsx` | Live progress indicator | ✅ |
 | `src/client/presets.ts` | Four demo argument presets | ✅ |
 | `src/client/hooks/useLocalStorage.ts` | Generic localStorage persistence hook (theme) | ✅ |
@@ -203,7 +208,8 @@ npm run lint                         # Oxlint
 # Tests
 npx tsx src/shared/schemas.test.ts       # 16 tests — effect/Schema validation
 npx tsx src/shared/utilities.test.ts     # 47 tests — prompts, speaker, chunking, JSON, ID gen
-npx tsx src/do/pipeline.test.ts          # 33 tests — pipeline logic with mock AI
+npx tsx src/do/exa-client.test.ts        # 4 tests — Exa REST API search client
+npx tsx src/do/pipeline.test.ts          # 38 tests — pipeline & verification logic with mock AI
 npx tsx src/do/pipeline-e2e.test.ts      # 19 tests — real AI Gateway calls (needs CF_AIG_TOKEN)
 
 # Infrastructure

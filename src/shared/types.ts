@@ -5,12 +5,34 @@
 
 // --- Core types ---
 
+export type FactCheckVerdict = "supported" | "refuted" | "inconclusive" | "partially_true";
+
+export interface EvidenceSource {
+  id: string;
+  url: string;
+  title: string;
+  publishedDate?: string;
+  author?: string;
+  snippet: string;
+  score?: number;
+}
+
+export interface StatementFactCheck {
+  statementId: string;
+  verdict: FactCheckVerdict;
+  confidence: number;
+  summary: string;
+  sources: EvidenceSource[];
+  verifiedAt: string;
+}
+
 export interface Statement {
   id: string;
   text: string;
   factCheckDifficulty: number;
   factCheckExplanation?: string;
   speakerId?: string;
+  factCheck?: StatementFactCheck;
 }
 
 export interface Speaker {

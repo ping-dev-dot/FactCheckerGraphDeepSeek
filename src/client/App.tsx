@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
-import { Sun, Moon, ChevronDown, X, Network, Terminal } from "lucide-react";
+import { Sun, Moon, ChevronDown, Network, Terminal } from "lucide-react";
 import { InputPanel } from "./components/InputPanel";
 import { GraphCanvas } from "./components/GraphCanvas";
 import { DetailSidebar } from "./components/DetailSidebar";
@@ -35,6 +35,8 @@ export default function App() {
   const [showLogs, setShowLogs] = useState(false);
 
   const [mobileInputOpen, setMobileInputOpen] = useState(false);
+  const [currentAnalysisId, setCurrentAnalysisId] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const isLight = themeMode === "light";
 
@@ -53,6 +55,58 @@ export default function App() {
       : null;
 
   const isRunning = status === "running" || status === "partial";
+
+  const handleVerifyStatement = useCallback(
+    async (statementId: string, statementText: string) => {
+      if (!currentAnalysisId) return;
+      setIsVerifying(true);
+      try {
+        const res = await fetch(`/api/analyze/${currentAnalysisId}/verify-statement`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ statementId, statementText }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || "Verification failed");
+        }
+
+        const { factCheck } = await res.json();
+
+        addLog({
+          id: generateId(),
+          timestamp: new Date().toISOString(),
+          level: "info",
+          message: `Verified statement ${statementId}: ${factCheck?.verdict}`,
+        });
+
+        const updateStatements = (statements?: Statement[]) =>
+          statements?.map((s) => (s.id === statementId ? { ...s, factCheck } : s));
+
+        if (result?.statements) {
+          setResult((prev) =>
+            prev ? { ...prev, statements: updateStatements(prev.statements) ?? [] } : prev
+          );
+        }
+        if (partialResult?.statements) {
+          setPartialResult((prev) =>
+            prev ? { ...prev, statements: updateStatements(prev.statements) } : prev
+          );
+        }
+      } catch (err) {
+        addLog({
+          id: generateId(),
+          timestamp: new Date().toISOString(),
+          level: "error",
+          message: `Verification failed: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      } finally {
+        setIsVerifying(false);
+      }
+    },
+    [currentAnalysisId, result, partialResult, addLog]
+  );
 
   // ── Submit: POST /api/analyze, then listen via SSE ──
   const handleSubmit = useCallback(async () => {
@@ -78,6 +132,7 @@ export default function App() {
       }
 
       const { analysisId } = await res.json();
+      setCurrentAnalysisId(analysisId);
       addLog({
         id: generateId(),
         timestamp: new Date().toISOString(),
@@ -370,6 +425,8 @@ export default function App() {
           result={displayResult}
           onClose={() => setSelectedNodeId(null)}
           themeMode={themeMode}
+          onVerifyStatement={handleVerifyStatement}
+          isVerifying={isVerifying}
         />
       )}
 

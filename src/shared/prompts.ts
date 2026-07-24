@@ -142,3 +142,18 @@ export const STEP3_SCORING_PROMPT = `You are an expert at estimating how difficu
 
 Return ONLY valid JSON (no markdown fences, no extra text):
 { "factCheckDifficulty": 45, "factCheckExplanation": "..." }`;
+
+/**
+ * Step 4: Evidence verification prompt using retrieved Exa web search results.
+ * Output: JSON with verdict, confidence, summary, and relevantSourceUrls.
+ */
+export const STEP4_VERIFICATION_PROMPT = `You are a rigorous fact-checker. Given a proposition statement and web search evidence snippets from Exa.ai, determine if the evidence supports, refutes, or is inconclusive regarding the claim.
+
+Return ONLY valid JSON (no markdown fences, no extra text):
+{
+  "verdict": "supported" | "refuted" | "inconclusive" | "partially_true",
+  "confidence": <number 0 to 100>,
+  "summary": "<2-3 sentence explanation directly referencing the evidence>",
+  "relevantSourceUrls": ["<url1>", "<url2>"]
+}`;
+

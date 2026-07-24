@@ -57,6 +57,30 @@ export default {
       }
     }
 
+    // ── POST /api/analyze/:id/verify-statement — verify claim via Exa ──
+    const verifyMatch = url.pathname.match(/^\/api\/analyze\/(.+)\/verify-statement$/);
+    if (verifyMatch && request.method === "POST") {
+      const analysisId = verifyMatch[1];
+      try {
+        const body = await request.json();
+        const doId = env.ANALYSIS_DO.idFromName(analysisId);
+        const stub = env.ANALYSIS_DO.get(doId);
+
+        const doResponse = await stub.fetch(
+          new Request("https://do.local/verify-statement", {
+            method: "POST",
+            body: JSON.stringify(body),
+          })
+        );
+        return doResponse;
+      } catch (err) {
+        return json(
+          { error: `Verification request failed: ${err instanceof Error ? err.message : String(err)}` },
+          500
+        );
+      }
+    }
+
     // ── Fallback: serve static assets ──
     return env.ASSETS.fetch(request);
   },

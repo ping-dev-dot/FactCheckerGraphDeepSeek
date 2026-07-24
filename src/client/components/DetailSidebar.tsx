@@ -1,4 +1,4 @@
-import { X, FileText, ShieldAlert, AlertOctagon, Repeat, GitFork } from "lucide-react";
+import { X, FileText, ShieldAlert, AlertOctagon, Repeat, GitFork, CheckCircle2, XCircle, HelpCircle, ExternalLink, Search, Loader2 } from "lucide-react";
 import type { Statement, Relation, AnalysisResult, PartialAnalysisResult, ThemeMode } from "../../shared/types";
 import { difficultyColor } from "../../shared/types";
 
@@ -7,9 +7,11 @@ interface DetailSidebarProps {
   result: AnalysisResult | PartialAnalysisResult;
   onClose: () => void;
   themeMode?: ThemeMode;
+  onVerifyStatement?: (statementId: string, statementText: string) => Promise<void>;
+  isVerifying?: boolean;
 }
 
-export function DetailSidebar({ statement, result, onClose, themeMode = "dark" }: DetailSidebarProps) {
+export function DetailSidebar({ statement, result, onClose, themeMode = "dark", onVerifyStatement, isVerifying = false }: DetailSidebarProps) {
   if (!statement) return null;
 
   const isLight = themeMode === "light";
@@ -107,6 +109,107 @@ export function DetailSidebar({ statement, result, onClose, themeMode = "dark" }
               }`}>
                 {statement.factCheckExplanation}
               </p>
+            )}
+          </div>
+
+          {/* Web Grounding & Evidence (Exa) */}
+          <div className={`pt-3 border-t ${isLight ? "border-[#e4e4e7]" : "border-[#3f3f46]"}`}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className={`text-[11px] font-medium uppercase tracking-wider flex items-center gap-1.5 ${
+                isLight ? "text-[#71717a]" : "text-[#a1a1aa]"
+              }`}>
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>Web Grounding & Evidence</span>
+              </h3>
+            </div>
+
+            {statement.factCheck ? (
+              <div className={`p-3 rounded-lg border flex flex-col gap-2.5 ${
+                statement.factCheck.verdict === "supported"
+                  ? "bg-[#a6e3a1]/10 border-[#a6e3a1]/30 text-[#a6e3a1]"
+                  : statement.factCheck.verdict === "refuted"
+                  ? "bg-[#f38ba8]/10 border-[#f38ba8]/30 text-[#f38ba8]"
+                  : statement.factCheck.verdict === "partially_true"
+                  ? "bg-[#f9e2af]/10 border-[#f9e2af]/30 text-[#f9e2af]"
+                  : "bg-[#a6adc8]/10 border-[#a6adc8]/30 text-[#a6adc8]"
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wide flex items-center gap-1.5">
+                    {statement.factCheck.verdict === "supported" && <CheckCircle2 className="w-4 h-4 text-[#a6e3a1]" />}
+                    {statement.factCheck.verdict === "refuted" && <XCircle className="w-4 h-4 text-[#f38ba8]" />}
+                    {statement.factCheck.verdict === "partially_true" && <HelpCircle className="w-4 h-4 text-[#f9e2af]" />}
+                    {statement.factCheck.verdict === "inconclusive" && <HelpCircle className="w-4 h-4 text-[#a6adc8]" />}
+                    <span>{statement.factCheck.verdict.replace("_", " ")}</span>
+                  </span>
+                  <span className="text-[11px] font-mono opacity-80">
+                    {statement.factCheck.confidence}% confidence
+                  </span>
+                </div>
+
+                <p className={`text-xs leading-relaxed ${isLight ? "text-[#18181b]" : "text-[#f4f4f5]"}`}>
+                  {statement.factCheck.summary}
+                </p>
+
+                {statement.factCheck.sources && statement.factCheck.sources.length > 0 && (
+                  <div className="mt-1 flex flex-col gap-1.5">
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider ${isLight ? "text-[#71717a]" : "text-[#a1a1aa]"}`}>
+                      Sources & Evidence ({statement.factCheck.sources.length})
+                    </span>
+                    {statement.factCheck.sources.map((src, idx) => (
+                      <a
+                        key={idx}
+                        href={src.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={`p-2 rounded border transition-colors flex flex-col gap-1 text-xs hover:border-blue-500/50 ${
+                          isLight ? "bg-[#f4f4f5] border-[#e4e4e7] text-[#18181b]" : "bg-[#27272a] border-[#3f3f46] text-[#f4f4f5]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 font-medium">
+                          <span className="truncate hover:underline flex items-center gap-1">
+                            <span>{src.title}</span>
+                          </span>
+                          <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-70" />
+                        </div>
+                        {src.snippet && (
+                          <p className={`text-[11px] leading-snug line-clamp-2 italic ${isLight ? "text-[#71717a]" : "text-[#a1a1aa]"}`}>
+                            "{src.snippet}"
+                          </p>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className={`text-xs leading-relaxed ${isLight ? "text-[#71717a]" : "text-[#a1a1aa]"}`}>
+                  No web evidence retrieved yet for this proposition.
+                </p>
+                {onVerifyStatement && (
+                  <button
+                    onClick={() => onVerifyStatement(statement.id, statement.text)}
+                    disabled={isVerifying}
+                    className={`
+                      px-3 py-2 rounded-md text-xs font-medium flex items-center justify-center gap-2
+                      transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
+                      ${isLight ? "bg-[#18181b] text-white hover:bg-[#27272a]" : "bg-[#3f3f46] text-white hover:bg-[#52525b]"}
+                    `}
+                  >
+                    {isVerifying ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Searching Exa.ai...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-3.5 h-3.5" />
+                        <span>Verify Claim via Exa Search</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             )}
           </div>
 

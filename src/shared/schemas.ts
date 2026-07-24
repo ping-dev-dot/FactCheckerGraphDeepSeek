@@ -5,6 +5,41 @@
 
 import { Schema } from "effect";
 
+// ── FactCheck & Verification ──
+
+export const FactCheckVerdictSchema = Schema.Literal(
+  "supported",
+  "refuted",
+  "inconclusive",
+  "partially_true"
+);
+
+export const EvidenceSourceSchema = Schema.Struct({
+  id: Schema.String,
+  url: Schema.String,
+  title: Schema.String,
+  publishedDate: Schema.optional(Schema.String),
+  author: Schema.optional(Schema.String),
+  snippet: Schema.String,
+  score: Schema.optional(Schema.Number),
+});
+
+export const StatementFactCheckSchema = Schema.Struct({
+  statementId: Schema.String,
+  verdict: FactCheckVerdictSchema,
+  confidence: Schema.Number.pipe(Schema.between(0, 100)),
+  summary: Schema.String,
+  sources: Schema.Array(EvidenceSourceSchema),
+  verifiedAt: Schema.String,
+});
+
+export const FactCheckSynthesisSchema = Schema.Struct({
+  verdict: FactCheckVerdictSchema,
+  confidence: Schema.Number.pipe(Schema.between(0, 100)),
+  summary: Schema.String,
+  relevantSourceUrls: Schema.optional(Schema.Array(Schema.String)),
+});
+
 // ── Statement ──
 
 export const StatementSchema = Schema.Struct({
@@ -13,6 +48,7 @@ export const StatementSchema = Schema.Struct({
   factCheckDifficulty: Schema.Number.pipe(Schema.between(0, 100)),
   factCheckExplanation: Schema.optional(Schema.String),
   speakerId: Schema.optional(Schema.String),
+  factCheck: Schema.optional(StatementFactCheckSchema),
 });
 
 // ── Speaker ──
@@ -85,3 +121,6 @@ export type Speaker = Schema.Schema.Type<typeof SpeakerSchema>;
 export type Relation = Schema.Schema.Type<typeof RelationSchema>;
 export type AnalysisResult = Schema.Schema.Type<typeof AnalysisResultSchema>;
 export type PartialAnalysisResult = Schema.Schema.Type<typeof PartialAnalysisResultSchema>;
+export type StatementFactCheck = Schema.Schema.Type<typeof StatementFactCheckSchema>;
+export type EvidenceSource = Schema.Schema.Type<typeof EvidenceSourceSchema>;
+
