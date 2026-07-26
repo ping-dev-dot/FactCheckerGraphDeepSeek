@@ -50,7 +50,7 @@ export function makeAiClient(cfAigToken: string): AiClientShape {
     headers: { "cf-aig-authorization": `Bearer ${cfAigToken}` },
     name: "deepseek-gateway",
   });
-  const model = provider.chatModel("deepseek-chat");
+  const model = provider.chatModel("deepseek-v4-flash");
 
   return {
     generateText: ({ system, prompt, maxTokens = 4096 }) =>
