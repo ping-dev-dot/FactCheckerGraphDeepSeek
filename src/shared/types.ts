@@ -11,6 +11,9 @@ export interface Statement {
   factCheckDifficulty: number;
   factCheckExplanation?: string;
   speakerId?: string;
+  typ?: "faktisch" | "meinung" | "nicht_pruefbar";
+  finalVerdict?: string;
+  finalEvaluation?: string;
 }
 
 export interface Speaker {
@@ -27,12 +30,43 @@ export interface Relation {
   details?: string;
 }
 
+export interface QueryItem {
+  id: string;
+  statementId: string;
+  text: string;
+  createdAt?: string;
+}
+
+export interface QueryResultItem {
+  id: string;
+  queryId: string;
+  statementId: string;
+  url: string;
+  title?: string;
+  snippets?: string[];
+  createdAt?: string;
+}
+
+export interface FactCheckSource {
+  id: string;
+  statementId: string;
+  queryResultId?: string;
+  urteil: "stuetzt" | "widerlegt" | "irrelevant";
+  konfidenz?: number;
+  begruendung: string;
+  url?: string;
+  title?: string;
+}
+
 export interface AnalysisResult {
   statements: Statement[];
   relations: Relation[];
   fallacies?: Array<{ statementId: string; fallacyType: string; description: string }>;
   cycles?: Array<{ nodeIds: string[]; description: string }>;
   speakers?: Speaker[];
+  queries?: QueryItem[];
+  queryResults?: QueryResultItem[];
+  factCheckSources?: FactCheckSource[];
 }
 
 export interface PartialAnalysisResult {
@@ -41,6 +75,9 @@ export interface PartialAnalysisResult {
   fallacies?: Array<{ statementId: string; fallacyType: string; description: string }>;
   cycles?: Array<{ nodeIds: string[]; description: string }>;
   speakers?: Speaker[];
+  queries?: QueryItem[];
+  queryResults?: QueryResultItem[];
+  factCheckSources?: FactCheckSource[];
 }
 
 // --- Preset type ---

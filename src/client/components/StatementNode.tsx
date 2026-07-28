@@ -47,13 +47,28 @@ export function StatementNode({ data, selected }: NodeProps) {
       }}
     >
       <Handle type="target" position={Position.Top} className={`!w-2 !h-2 ${isLight ? "!bg-[#a1a1aa]" : "!bg-[#3f3f46]"}`} />
-      <div className="flex items-center justify-between gap-2 mb-1.5">
-        <span className={`text-[11px] font-mono font-medium tracking-tight ${isLight ? "text-[#71717a]" : "text-[#a1a1aa]"}`}>
-          {node.id}
-        </span>
-        {node.speakerName && (
+      <div className="flex items-center justify-between gap-1.5 mb-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <span className={`text-[11px] font-mono font-medium tracking-tight ${isLight ? "text-[#71717a]" : "text-[#a1a1aa]"}`}>
+            {node.id}
+          </span>
+          {node.typ && (
+            <span
+              className={`text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded border ${
+                node.typ === "faktisch"
+                  ? "bg-blue-500/10 text-blue-500 border-blue-500/30"
+                  : node.typ === "meinung"
+                  ? "bg-purple-500/10 text-purple-400 border-purple-500/30"
+                  : "bg-amber-500/10 text-amber-500 border-amber-500/30"
+              }`}
+            >
+              {node.typ === "faktisch" ? "Faktisch" : node.typ === "meinung" ? "Meinung" : "Unprüfbar"}
+            </span>
+          )}
+        </div>
+        {node.speakerName && !["Speaker", "Speaker_A", "Speaker_B"].includes(node.speakerName) && (
           <span
-            className="text-[10px] font-medium px-2 py-0.5 rounded border truncate max-w-[120px]"
+            className="text-[10px] font-medium px-2 py-0.5 rounded border truncate max-w-[110px]"
             style={{
               borderColor: (node.speakerColor ?? "#52525b") + "44",
               background: (node.speakerColor ?? "#52525b") + "18",

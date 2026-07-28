@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "vite",
+    "dev:worker": "wrangler dev",
     "build": "vite build",
     "deploy": "npm run build && wrangler deploy",
     "lint": "oxlint",
@@ -12,6 +13,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.14",
+    "@supabase/supabase-js": "^2.110.8",
     "@tailwindcss/vite": "^4.3.3",
     "@xyflow/react": "^12.11.2",
     "ai": "^7.0.36",
