@@ -8,23 +8,17 @@
   "assets": {
     "directory": "./dist/",
     "not_found_handling": "single-page-application",
-    "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
-  },
-
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "ANALYSIS_DO",
-        "class_name": "AnalysisPipelineDO"
-      }
-    ]
+    "binding": "ASSETS"
   },
 
   "migrations": [
     {
       "tag": "v1",
       "new_sqlite_classes": ["AnalysisPipelineDO"]
+    },
+    {
+      "tag": "v2",
+      "deleted_classes": ["AnalysisPipelineDO"]
     }
   ]
 }

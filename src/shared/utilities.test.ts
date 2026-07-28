@@ -9,7 +9,6 @@ import { chunkText, estimateTokens } from "./text-chunking";
 import { createJsonBuffer } from "./json-extractor";
 import { generateId } from "./id-generator";
 import { Schema } from "effect";
-import { StatementSchema } from "./schemas";
 
 let passed = 0;
 let failed = 0;
