@@ -188,8 +188,8 @@ export function DetailSidebar({
               <div
                 className={`p-3 rounded-md border leading-relaxed text-xs font-sans whitespace-pre-wrap ${
                   isLight
-                    ? "bg-[#f8f9fa] border-[#e4e4e7] text-[#3f3f46]"
-                    : "bg-[#09090b] border-[#3f3f46] text-[#d4d4d8]"
+                    ? "bg-[#f8f9fa] border-[#e4e4e7] text-[#18181b]"
+                    : "bg-[#09090b] border-[#3f3f46] text-[#f4f4f5]"
                 }`}
               >
                 {relation.details || relation.label || "Keine zusätzliche Begründung in der Datenbank hinterlegt."}
@@ -310,22 +310,30 @@ export function DetailSidebar({
           {/* Final Verdict Banner */}
           {statement.finalVerdict && (
             <div
-              className={`p-3 rounded-md border ${
+              className={`p-3 rounded-md border space-y-1.5 ${
                 statement.finalVerdict === "Wahr" || statement.finalVerdict === "Eher Wahr"
-                  ? "bg-[#22c55e]/10 border-[#22c55e]/30 text-[#22c55e]"
+                  ? isLight
+                    ? "bg-[#22c55e]/15 border-[#22c55e]/50 text-[#15803d]"
+                    : "bg-[#22c55e]/10 border-[#22c55e]/40 text-[#4ade80]"
                   : statement.finalVerdict === "Falsch" || statement.finalVerdict === "Eher Falsch"
-                  ? "bg-[#ef4444]/10 border-[#ef4444]/30 text-[#ef4444]"
-                  : "bg-[#eab308]/10 border-[#eab308]/30 text-[#eab308]"
+                  ? isLight
+                    ? "bg-[#ef4444]/15 border-[#ef4444]/50 text-[#b91c1c]"
+                    : "bg-[#ef4444]/10 border-[#ef4444]/40 text-[#f87171]"
+                  : isLight
+                    ? "bg-[#eab308]/15 border-[#eab308]/50 text-[#a16207]"
+                    : "bg-[#eab308]/10 border-[#eab308]/40 text-[#facc15]"
               }`}
             >
-              <div className="flex items-center justify-between font-semibold text-xs mb-1">
-                <span>Finales Urteil:</span>
-                <span className="uppercase px-1.5 py-0.5 rounded border border-current font-mono text-[11px]">
+              <div className="flex items-center justify-between font-bold text-xs">
+                <span className={isLight ? "text-[#0f172a]" : "text-[#f8fafc]"}>Finales Urteil:</span>
+                <span className="uppercase px-2 py-0.5 rounded border border-current font-mono text-[11px] font-bold">
                   {statement.finalVerdict}
                 </span>
               </div>
               {statement.finalEvaluation && (
-                <p className="text-xs leading-relaxed text-[#d4d4d8] font-sans">
+                <p className={`text-xs leading-relaxed font-normal pt-1.5 border-t border-current/20 ${
+                  isLight ? "text-[#1e293b]" : "text-[#f1f5f9]"
+                }`}>
                   {statement.finalEvaluation}
                 </p>
               )}
@@ -489,12 +497,12 @@ export function DetailSidebar({
                                 {/* Nested Source Evaluation */}
                                 {evalSrc && (
                                   <div
-                                    className={`mt-1.5 p-1.5 rounded border text-[10px] space-y-0.5 ${
+                                    className={`mt-1.5 p-2 rounded border text-[10px] space-y-1 ${
                                       evalSrc.urteil === "stuetzt"
-                                        ? "bg-[#22c55e]/10 border-[#22c55e]/30 text-[#22c55e]"
+                                        ? isLight ? "bg-[#22c55e]/15 border-[#22c55e]/40 text-[#15803d]" : "bg-[#22c55e]/10 border-[#22c55e]/30 text-[#4ade80]"
                                         : evalSrc.urteil === "widerlegt"
-                                        ? "bg-[#ef4444]/10 border-[#ef4444]/30 text-[#ef4444]"
-                                        : "bg-[#71717a]/10 border-[#71717a]/30 text-[#a1a1aa]"
+                                        ? isLight ? "bg-[#ef4444]/15 border-[#ef4444]/40 text-[#b91c1c]" : "bg-[#ef4444]/10 border-[#ef4444]/30 text-[#f87171]"
+                                        : isLight ? "bg-[#71717a]/15 border-[#71717a]/40 text-[#3f3f46]" : "bg-[#71717a]/10 border-[#71717a]/30 text-[#a1a1aa]"
                                     }`}
                                   >
                                     <div className="flex items-center justify-between font-semibold">
@@ -503,7 +511,7 @@ export function DetailSidebar({
                                       </span>
                                       <span>{Math.round(evalSrc.konfidenz * 100)}% Konfidenz</span>
                                     </div>
-                                    <p className="leading-relaxed font-sans text-[10px]">
+                                    <p className={`leading-relaxed font-sans text-[10px] ${isLight ? "text-[#1e293b]" : "text-[#f1f5f9]"}`}>
                                       {evalSrc.begruendung}
                                     </p>
                                   </div>
