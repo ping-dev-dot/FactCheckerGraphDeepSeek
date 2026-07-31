@@ -12,7 +12,6 @@ export type CycleEdgeData = {
   label?: string;
   pairIndex?: number;
   totalInPair?: number;
-  labelIndex?: number;
   themeMode?: ThemeMode;
 };
 
@@ -34,7 +33,6 @@ export function ArgumentEdge({
   const isCycle = edgeData.isCycle;
   const pairIndex = edgeData.pairIndex ?? 0;
   const totalInPair = edgeData.totalInPair ?? 1;
-  const labelIndex = edgeData.labelIndex ?? pairIndex;
 
   // Calculate distinct curvature for multi-edges between the same pair of nodes
   let curvature = 0.25;
@@ -62,7 +60,7 @@ export function ArgumentEdge({
   const nx = -dy / len;
   const ny = dx / len;
 
-  const perpOffset = STAGGER_OFFSETS[labelIndex % STAGGER_OFFSETS.length];
+  const perpOffset = STAGGER_OFFSETS[pairIndex % STAGGER_OFFSETS.length];
   const labelX = defaultLabelX + nx * perpOffset;
   const labelY = defaultLabelY + ny * perpOffset;
 

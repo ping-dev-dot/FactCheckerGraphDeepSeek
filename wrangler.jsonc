@@ -9,16 +9,5 @@
     "directory": "./dist/",
     "not_found_handling": "single-page-application",
     "binding": "ASSETS"
-  },
-
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_sqlite_classes": ["AnalysisPipelineDO"]
-    },
-    {
-      "tag": "v2",
-      "deleted_classes": ["AnalysisPipelineDO"]
-    }
-  ]
+  }
 }

@@ -131,6 +131,3 @@ export function StatementNode({ data, selected }: NodeProps) {
     </div>
   );
 }
-
-
-
