@@ -123,25 +123,47 @@ export function DebugLogConsole({ logs, onClear, onClose, themeMode = "dark" }: 
 
   // Compute status & extracted count for each step from logs
   const getStepMetrics = (step: StepDetail) => {
+    const isSessionComplete = logs.some(
+      (l) =>
+        l.message.toLowerCase().includes("session analysis completed") ||
+        l.message.toLowerCase().includes("session analysis complete")
+    );
+
     const fnLogs = logs.filter(
       (l) =>
         l.message.toLowerCase().includes(step.functionName.toLowerCase()) ||
         l.message.toLowerCase().includes(step.id.toLowerCase()) ||
-        (l.details && l.details.toLowerCase().includes(step.functionName.toLowerCase()))
+        (l.details && l.details.toLowerCase().includes(step.functionName.toLowerCase())) ||
+        (step.id === "claims" && (l.message.toLowerCase().includes("statement") || l.message.toLowerCase().includes("claim"))) ||
+        (step.id === "relations" && (l.message.toLowerCase().includes("relation") || l.message.toLowerCase().includes("fallacy"))) ||
+        (step.id === "queries" && l.message.toLowerCase().includes("query")) ||
+        (step.id === "search" && (l.message.toLowerCase().includes("web result") || l.message.toLowerCase().includes("search"))) ||
+        (step.id === "evaluation" && (l.message.toLowerCase().includes("source") || l.message.toLowerCase().includes("quelle"))) ||
+        (step.id === "verdict" && (l.message.toLowerCase().includes("verdict") || l.message.toLowerCase().includes("session analysis")))
     );
 
-    if (fnLogs.length === 0) return { status: "idle", count: 0, lastMsg: "Wartet..." };
+    if (fnLogs.length === 0) {
+      if (isSessionComplete) {
+        return { status: "completed", count: 0, lastMsg: "Abgeschlossen" };
+      }
+      return { status: "idle", count: 0, lastMsg: "Wartet..." };
+    }
 
     const hasError = fnLogs.some((l) => l.level === "error");
     if (hasError) return { status: "error", count: fnLogs.length, lastMsg: fnLogs[fnLogs.length - 1].message };
 
-    const isComplete = fnLogs.some(
-      (l) =>
-        l.message.toLowerCase().includes("completed") ||
-        l.message.toLowerCase().includes("final verdict") ||
-        l.message.toLowerCase().includes("evaluated") ||
-        l.message.toLowerCase().includes("200 ok")
-    );
+    const isComplete =
+      isSessionComplete ||
+      fnLogs.some(
+        (l) =>
+          l.message.toLowerCase().includes("completed") ||
+          l.message.toLowerCase().includes("final verdict") ||
+          l.message.toLowerCase().includes("evaluated") ||
+          l.message.toLowerCase().includes("200 ok") ||
+          l.message.toLowerCase().includes("returned") ||
+          l.message.toLowerCase().includes("erfolgreich") ||
+          l.message.toLowerCase().includes("abgeschlossen")
+      );
 
     if (isComplete) return { status: "completed", count: fnLogs.length, lastMsg: fnLogs[fnLogs.length - 1].message };
 
