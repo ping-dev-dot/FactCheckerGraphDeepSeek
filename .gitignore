@@ -17,6 +17,7 @@ dist-ssr
 .pi-subagents
 .wrangler
 .dev.vars
+supabase/.temp/
 
 # Editor directories and files
 .vscode/*
