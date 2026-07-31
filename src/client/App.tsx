@@ -22,6 +22,7 @@ import type {
   QueryResultItem,
   FactCheckSource,
 } from "../shared/types";
+import { DEFAULT_MODEL } from "../shared/types";
 
 export default function App() {
   const [themeMode, setThemeMode] = useLocalStorage<ThemeMode>("theme-mode", "dark");
@@ -40,6 +41,7 @@ export default function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [mobileInputOpen, setMobileInputOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useLocalStorage<string>("selected-model", DEFAULT_MODEL);
 
   const isLight = themeMode === "light";
   const relDebounceTimer = useRef<any>(null);
@@ -91,7 +93,7 @@ export default function App() {
         .insert({
           raw_text: inputText,
           provider: "openrouter",
-          model: "deepseek/deepseek-chat",
+          model: selectedModel,
           status: "processing",
         })
         .select()
@@ -106,7 +108,7 @@ export default function App() {
         id: generateId(),
         timestamp: new Date().toISOString(),
         level: "info",
-        message: `Supabase Session created: ${sessionId} (Model: deepseek/deepseek-chat)`,
+        message: `Supabase Session created: ${sessionId} (Model: ${selectedModel})`,
       });
 
       // Track triggered functions to prevent duplicate invocations
@@ -172,8 +174,31 @@ export default function App() {
                 message: `[Database Entry Trigger] Invoking query-generieren for statement ${newRow.id.slice(0, 8)}...`,
               });
               supabase.functions.invoke("query-generieren", {
-                body: { statement_id: newRow.id, inhalt: newRow.inhalt, typ: newRow.typ },
-              }).catch(err => console.error("Database Entry Trigger query-generieren failed:", err));
+                body: { statement_id: newRow.id, inhalt: newRow.inhalt, typ: newRow.typ, model: selectedModel },
+              }).then(({ data, error }) => {
+                if (error) {
+                  addLog({
+                    id: generateId(),
+                    timestamp: new Date().toISOString(),
+                    level: "error",
+                    message: `query-generieren failed for ${newRow.id.slice(0, 8)}: ${error.message}`,
+                  });
+                } else {
+                  addLog({
+                    id: generateId(),
+                    timestamp: new Date().toISOString(),
+                    level: "info",
+                    message: `query-generieren returned 200 OK (${data?.queries?.length || 0} queries generated)`,
+                  });
+                }
+              }).catch((err) => {
+                addLog({
+                  id: generateId(),
+                  timestamp: new Date().toISOString(),
+                  level: "error",
+                  message: `query-generieren exception: ${err instanceof Error ? err.message : String(err)}`,
+                });
+              });
             }
 
             // Database Entry Trigger: relationen-analysieren debounced when >= 2 statements exist
@@ -188,8 +213,31 @@ export default function App() {
                   message: `[Database Entry Trigger] Invoking relationen-analysieren for session ${sessionId.slice(0, 8)}...`,
                 });
                 supabase.functions.invoke("relationen-analysieren", {
-                  body: { session_id: sessionId },
-                }).catch(err => console.error("Database Entry Trigger relationen-analysieren failed:", err));
+                  body: { session_id: sessionId, model: selectedModel },
+                }).then(({ data, error }) => {
+                  if (error) {
+                    addLog({
+                      id: generateId(),
+                      timestamp: new Date().toISOString(),
+                      level: "error",
+                      message: `relationen-analysieren failed: ${error.message}`,
+                    });
+                  } else {
+                    addLog({
+                      id: generateId(),
+                      timestamp: new Date().toISOString(),
+                      level: "info",
+                      message: `relationen-analysieren returned 200 OK (${data?.relations?.length || 0} relations analyzed)`,
+                    });
+                  }
+                }).catch((err) => {
+                  addLog({
+                    id: generateId(),
+                    timestamp: new Date().toISOString(),
+                    level: "error",
+                    message: `relationen-analysieren exception: ${err instanceof Error ? err.message : String(err)}`,
+                  });
+                });
               }
             }, 1200);
           }
@@ -337,7 +385,30 @@ export default function App() {
               });
               supabase.functions.invoke("query-ausfuehren", {
                 body: { query_id: q.id, statement_id: q.statement_id, inhalt: q.inhalt },
-              }).catch(err => console.error("Database Entry Trigger query-ausfuehren failed:", err));
+              }).then(({ data, error }) => {
+                if (error) {
+                  addLog({
+                    id: generateId(),
+                    timestamp: new Date().toISOString(),
+                    level: "error",
+                    message: `query-ausfuehren failed for ${q.id.slice(0, 8)}: ${error.message}`,
+                  });
+                } else {
+                  addLog({
+                    id: generateId(),
+                    timestamp: new Date().toISOString(),
+                    level: "info",
+                    message: `query-ausfuehren returned 200 OK (${data?.saved_results || 0} search results found)`,
+                  });
+                }
+              }).catch((err) => {
+                addLog({
+                  id: generateId(),
+                  timestamp: new Date().toISOString(),
+                  level: "error",
+                  message: `query-ausfuehren exception: ${err instanceof Error ? err.message : String(err)}`,
+                });
+              });
             }
           }
         )
@@ -391,8 +462,32 @@ export default function App() {
                   url: qr.url,
                   title: qr.title,
                   snippets: qr.snippets,
+                  model: selectedModel,
                 },
-              }).catch(err => console.error("Database Entry Trigger quelle-bewerten failed:", err));
+              }).then(({ data, error }) => {
+                if (error) {
+                  addLog({
+                    id: generateId(),
+                    timestamp: new Date().toISOString(),
+                    level: "error",
+                    message: `quelle-bewerten failed for ${qr.id.slice(0, 8)}: ${error.message}`,
+                  });
+                } else {
+                  addLog({
+                    id: generateId(),
+                    timestamp: new Date().toISOString(),
+                    level: "info",
+                    message: `quelle-bewerten returned 200 OK ([${data?.saved_bewertung?.urteil || "evaluated"}] source evaluated)`,
+                  });
+                }
+              }).catch((err) => {
+                addLog({
+                  id: generateId(),
+                  timestamp: new Date().toISOString(),
+                  level: "error",
+                  message: `quelle-bewerten exception: ${err instanceof Error ? err.message : String(err)}`,
+                });
+              });
             }
           }
         )
@@ -478,7 +573,7 @@ export default function App() {
       const { data: edgeData, error: edgeErr } = await supabase.functions.invoke(
         "behauptungen-generieren",
         {
-          body: { session_id: sessionId, inhalt: inputText },
+          body: { session_id: sessionId, inhalt: inputText, model: selectedModel },
         }
       );
 
@@ -505,7 +600,7 @@ export default function App() {
       setErrorMessage(message);
       setStatus("error");
     }
-  }, [inputText, addLog]);
+  }, [inputText, selectedModel, addLog]);
 
   const handleViewPartial = useCallback(() => {
     setErrorMessage("");
@@ -600,6 +695,8 @@ export default function App() {
               themeMode={themeMode}
               onThemeModeChange={setThemeMode}
               onClose={() => setMobileInputOpen(false)}
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
             />
           </div>
         </>
@@ -622,6 +719,8 @@ export default function App() {
           themeMode={themeMode}
           onThemeModeChange={setThemeMode}
           variant="desktop"
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
         />
 
         {/* Debug Logs Footer */}

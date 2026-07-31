@@ -37,6 +37,7 @@ serve(async (req) => {
     const url = record.url || "";
     const title = record.title || "";
     const snippets = record.snippets || [];
+    const model: string = record.model || "deepseek/deepseek-v4-flash-0731";
 
     if (!query_result_id || !statement_id) {
       return new Response(
@@ -68,7 +69,7 @@ serve(async (req) => {
     const llmResult = await callOpenRouter([
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: userPrompt }
-    ]);
+    ], 0.0, model);
 
     const parsed = JSON.parse(extractJson(llmResult));
     const urteil = parsed.urteil || "irrelevant";
@@ -120,7 +121,7 @@ serve(async (req) => {
             "Authorization": `Bearer ${serviceRoleKey}`,
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ statement_id, session_id: stmt.session_id })
+          body: JSON.stringify({ statement_id, session_id: stmt.session_id, model })
         }).catch(err => console.error(`[quelle-bewerten] Failed to trigger satz-bewerten:`, err));
 
         const edgeRuntime = (globalThis as any).EdgeRuntime;

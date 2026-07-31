@@ -45,6 +45,7 @@ serve(async (req) => {
     const record = payload.record || payload;
     const statement_id = record.statement_id;
     const session_id = record.session_id;
+    const model: string = record.model || "deepseek/deepseek-v4-flash-0731";
 
     if (!statement_id) {
       return new Response(
@@ -93,7 +94,7 @@ serve(async (req) => {
     const llmResult = await callOpenRouter([
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: userPrompt }
-    ], 0.2);
+    ], 0.2, model);
 
     const parsed = JSON.parse(extractJson(llmResult));
     const bewertung_fazit = parsed.bewertung_fazit || "";

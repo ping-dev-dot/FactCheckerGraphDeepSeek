@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Sun, Moon, Play, Loader2, AlertTriangle, Clock, Hash, X } from "lucide-react";
+import { Sun, Moon, Play, Loader2, AlertTriangle, Clock, Hash, X, Cpu } from "lucide-react";
 import type { PipelineProgress, ThemeMode } from "../../shared/types";
+import { OPENROUTER_MODELS } from "../../shared/types";
 import { PRESETS } from "../presets";
 
 interface InputPanelProps {
@@ -15,6 +16,8 @@ interface InputPanelProps {
   onClose?: () => void;
   themeMode?: ThemeMode;
   onThemeModeChange?: (mode: ThemeMode) => void;
+  selectedModel: string;
+  onModelChange: (modelId: string) => void;
 }
 
 export function InputPanel({
@@ -29,6 +32,8 @@ export function InputPanel({
   onClose,
   themeMode = "dark",
   onThemeModeChange,
+  selectedModel,
+  onModelChange,
 }: InputPanelProps) {
   const [elapsedSec, setElapsedSec] = useState(0);
 
@@ -160,6 +165,32 @@ export function InputPanel({
             ))}
           </div>
         )}
+
+        {/* Model Selector */}
+        <div className={`text-xs font-medium uppercase tracking-wider ${
+          isLight ? "text-[#71717a]" : "text-[#a1a1aa]"
+        }`}>
+          Modell
+        </div>
+        <div className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
+          isLight ? "bg-[#f8f9fa] border-[#e4e4e7]" : "bg-[#09090b] border-[#3f3f46]"
+        }`}>
+          <Cpu className="w-3 h-3 text-[#3b82f6] flex-shrink-0" />
+          <select
+            value={selectedModel}
+            onChange={(e) => onModelChange(e.target.value)}
+            disabled={isLoading}
+            className={`flex-1 text-xs bg-transparent outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+              isLight ? "text-[#18181b]" : "text-[#f4f4f5]"
+            }`}
+          >
+            {OPENROUTER_MODELS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label} ({m.provider})
+              </option>
+            ))}
+          </select>
+        </div>
 
         {/* Text area */}
         <div className={`text-xs font-medium uppercase tracking-wider ${

@@ -59,6 +59,7 @@ serve(async (req) => {
     const record = payload.record || payload;
     const rawInhalt = record.inhalt || record.raw_text || record.text;
     const session_id = record.session_id || record.satz_id || record.id;
+    const model: string = record.model || "deepseek/deepseek-v4-flash-0731";
 
     if (!rawInhalt || !session_id) {
       return new Response(
@@ -82,7 +83,7 @@ serve(async (req) => {
     const llmResult = await callOpenRouter([
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: promptText }
-    ]);
+    ], 0.0, model);
 
     let parsed: any;
     try {
@@ -139,7 +140,7 @@ serve(async (req) => {
                 "Authorization": `Bearer ${serviceRoleKey}`,
                 "Content-Type": "application/json"
               },
-              body: JSON.stringify({ statement_id: stmt.id, inhalt: stmt.inhalt, typ: stmt.typ })
+              body: JSON.stringify({ statement_id: stmt.id, inhalt: stmt.inhalt, typ: stmt.typ, model })
             }).catch(err => console.error(`[behauptungen-generieren] Failed to trigger query-generieren:`, err))
           );
         }
@@ -154,7 +155,7 @@ serve(async (req) => {
               "Authorization": `Bearer ${serviceRoleKey}`,
               "Content-Type": "application/json"
             },
-            body: JSON.stringify({ session_id })
+            body: JSON.stringify({ session_id, model })
           }).catch(err => console.error(`[behauptungen-generieren] Failed to trigger relationen-analysieren:`, err))
         );
       }

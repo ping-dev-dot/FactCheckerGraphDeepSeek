@@ -87,6 +87,7 @@ serve(async (req) => {
 
     const record = payload.record || payload;
     const session_id = record.session_id || record.id;
+    const model: string = record.model || "deepseek/deepseek-v4-flash-0731";
 
     if (!session_id) {
       return new Response(
@@ -143,7 +144,7 @@ serve(async (req) => {
     const llmResult = await callOpenRouter([
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: userPrompt }
-    ], 0.2);
+    ], 0.2, model);
 
     const parsed = JSON.parse(extractJson(llmResult));
     const rawRelations = parsed.relations || [];

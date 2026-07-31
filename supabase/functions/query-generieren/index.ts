@@ -36,6 +36,7 @@ serve(async (req) => {
     const statement_id = record.statement_id || record.behauptung_id || record.id;
     const inhalt = record.inhalt;
     const typ = record.typ || "faktisch";
+    const model: string = record.model || "deepseek/deepseek-v4-flash-0731";
 
     if (!inhalt || !statement_id) {
       return new Response(
@@ -58,7 +59,7 @@ serve(async (req) => {
     const llmResult = await callOpenRouter([
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: inhalt }
-    ]);
+    ], 0.0, model);
 
     const parsed = JSON.parse(extractJson(llmResult));
     const queries: string[] = parsed.queries || [];

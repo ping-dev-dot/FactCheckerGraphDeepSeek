@@ -107,6 +107,30 @@ export interface PipelineProgress {
 
 export type ThemeMode = "dark" | "light";
 
+// --- Model Selection ---
+
+export interface ModelOption {
+  id: string;       // OpenRouter model ID  e.g. "deepseek/deepseek-chat"
+  label: string;    // Display name
+  provider: string; // Short provider tag  e.g. "DeepSeek"
+}
+
+export const OPENROUTER_MODELS: ModelOption[] = [
+  { id: "deepseek/deepseek-v4-flash-0731",  label: "DeepSeek V4 Flash (0731)",      provider: "DeepSeek" },
+  { id: "deepseek/deepseek-chat",           label: "DeepSeek V3 (Chat)",            provider: "DeepSeek" },
+  { id: "deepseek/deepseek-r1",             label: "DeepSeek R1 (Reasoning)",       provider: "DeepSeek" },
+  { id: "deepseek/deepseek-r1-0528",        label: "DeepSeek R1 0528",              provider: "DeepSeek" },
+  { id: "google/gemini-2.0-flash-001",      label: "Gemini 2.0 Flash",              provider: "Google" },
+  { id: "google/gemini-2.5-flash",          label: "Gemini 2.5 Flash",              provider: "Google" },
+  { id: "openai/gpt-4o-mini",               label: "GPT-4o Mini",                   provider: "OpenAI" },
+  { id: "openai/gpt-4.1-mini",              label: "GPT-4.1 Mini",                  provider: "OpenAI" },
+  { id: "anthropic/claude-3.5-haiku",       label: "Claude 3.5 Haiku",              provider: "Anthropic" },
+  { id: "meta-llama/llama-3.3-70b-instruct", label: "Llama 3.3 70B",               provider: "Meta" },
+  { id: "qwen/qwen3-235b-a22b",             label: "Qwen 3 235B MoE",               provider: "Alibaba" },
+];
+
+export const DEFAULT_MODEL = OPENROUTER_MODELS[0].id;
+
 // --- Logging ---
 
 export type LogLevel = "info" | "warn" | "error" | "debug";
@@ -123,30 +147,12 @@ export interface LogEntry {
 
 export type AppStatus = "idle" | "running" | "partial" | "success" | "error";
 
-// --- Error types ---
-
-export class PipelineStepError extends Error {
-  public readonly step: PipelineStage;
-  public readonly partialResult: PartialAnalysisResult;
-
-  constructor(message: string, step: PipelineStage, partialResult: PartialAnalysisResult) {
-    super(message);
-    this.name = "PipelineStepError";
-    this.step = step;
-    this.partialResult = partialResult;
-  }
-}
-
 // --- Colors ---
 
 export function difficultyColor(percent: number): string {
   if (percent <= 30) return "#22c55e";
   if (percent <= 70) return "#eab308";
   return "#ef4444";
-}
-
-export function difficultyBgColor(_percent: number): string {
-  return "#1c1c20";
 }
 
 export const SPEAKER_COLORS = [

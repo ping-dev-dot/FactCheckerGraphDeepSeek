@@ -44,7 +44,6 @@ export async function callOpenRouter(
     body: JSON.stringify({
       model: model,
       messages,
-      response_format: { type: "json_object" },
       temperature,
     }),
   });
